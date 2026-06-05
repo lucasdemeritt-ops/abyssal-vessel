@@ -45,3 +45,18 @@ the shipped game `__avExpose` is never set, so the seam is a no-op.
 Import `createEnv`/`extractScript` from `mock-env.mjs`, then drive the game via
 `env.frame(dtMs)`, fire UI events with `env.fireOn(id, 'click')`, and assert
 against `env.av` (the `__av` seam).
+
+## Visual smoke (screenshots)
+
+`test/shoot.mjs` renders the *real* game in headless Chromium (via Playwright)
+at phone size and captures the title, stage selector, options, gameplay,
+level-up and stage-clear screens into `test/shots/` (gitignored).
+
+```bash
+node test/shoot.mjs
+```
+
+It resolves Playwright from a global install if it isn't a local dependency,
+and needs the Chromium browser (`npx playwright install chromium`). Optional —
+not part of `check.sh`. Handy for eyeballing UI changes without a device.
+

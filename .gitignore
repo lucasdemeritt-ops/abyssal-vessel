@@ -1,2 +1,5 @@
 game.js
 *.tmp
+
+# Playwright screenshot output
+test/shots/
