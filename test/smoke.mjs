@@ -37,6 +37,10 @@ const { G, CAPS, STAGES, SAVE } = env.av;
 ok(Array.isArray(STAGES) && STAGES.length >= 2, `stage registry present (${STAGES.length} stages)`);
 ok(STAGES.every(s => s.id && s.numeral && typeof s.difficulty === 'number'), 'every stage has id/numeral/difficulty');
 
+// --- Content validation: every table entry is well-formed -----------------
+const issues = env.av.CONTENT_ISSUES || [];
+ok(issues.length === 0, 'content validation clean' + (issues.length ? ':\n    ' + issues.slice(0, 6).join('\n    ') : ''));
+
 // --- Title screen renders without input -----------------------------------
 for (let i = 0; i < 10; i++) env.frame();
 ok(env.state === 'title', "starts on the title screen");

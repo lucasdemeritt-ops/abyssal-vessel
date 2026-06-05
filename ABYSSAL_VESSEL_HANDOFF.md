@@ -2,8 +2,10 @@
 
 A handoff for picking up development of **Abyssal Vessel** in a fresh session (Claude Code, GitHub, or otherwise). Read this top to bottom once; it covers what the game is, how it's built, every system, the dev/test workflow, the current state, known issues, and the roadmap.
 
-**Current version:** v3.2
-**Format:** a single self-contained HTML file (`abyssal-vessel.html`) — HTML + CSS + one inline `<script>`. No build step, no dependencies, no external assets. Open it in a browser and it runs.
+**Current version:** v4.0
+**Format:** a single self-contained HTML file (`index.html`) — HTML + CSS + one inline `<script>`. No build step, no dependencies, no external assets. Open it in a browser and it runs. A committed headless test harness lives in `test/` (Node, no browser needed).
+
+> **v4.0 added:** a multi-stage structure (Roadmap #1), guarded `localStorage` persistence with per-stage bests (Roadmap #2), an options/customization menu, a load-time content validator, and the committed test harness. See §4a, §5, and the "ADDING CONTENT" banner at the top of the script.
 
 ---
 
@@ -19,11 +21,13 @@ A **deep-sea survivor-like** (the *Vampire Survivors* / *Magic Survival* genre) 
 
 ## 2. How it's built / file layout
 
-Everything lives in `abyssal-vessel.html`:
+Everything lives in `index.html`:
 
-- `<style>` — all CSS (title screen, HUD, upgrade/artifact screens, error overlay).
-- HTML body — canvas, HUD elements, title/game-over/upgrade/artifact screens (all toggled via `.hidden`).
-- `<script>` — the entire game (~3500 lines). Rendering is **canvas 2D**.
+- `<style>` — all CSS (title screen + stage selector, HUD, upgrade/artifact/stage-clear/options screens, error overlay).
+- HTML body — canvas, HUD elements, title/game-over/upgrade/artifact/stage-clear/options screens (all toggled via `.hidden`).
+- `<script>` — the entire game (~3900 lines). Rendering is **canvas 2D**. Opens with an "ADDING CONTENT" guide banner.
+
+Plus `test/` (committed): `check.sh` (the gate), `mock-env.mjs` (fake DOM/canvas + virtual clock), `smoke.mjs` (headless playthrough), `README.md`.
 
 There is **no module system**. The whole script is wrapped in an IIFE (see Architecture). All game state hangs off a single global object `G`.
 
@@ -137,15 +141,42 @@ On reaching `xpToNext`, `levelUp()` increments level, raises the threshold (×1.
 Spawns are always **off-screen** at `sqrt(W²+H²)/2 + 70`, and avoid a rotating ~85° "safe arc" so the player is never fully encircled with no escape. Ranged enemies (squid) are capped at a few concurrent.
 
 ### Zones & scaling (time-based)
-5 zones by elapsed time: Continental Shelf (→50s), Twilight Zone (→185s), Abyssal Ruins (→430s), Hadal Depths (→760s), The Mouth (∞). Each has a `pool` (weighted enemy types) and `spawnRate`.
+A **zone** is a depth band *within a run* (its enemy `pool` + `spawnRate`, advanced by elapsed time): Continental Shelf (→50s), Twilight Zone (→185s), Abyssal Ruins (→430s), Hadal Depths (→760s), The Mouth (∞). `currentZone()` reads `activeStage().zones || ZONES`.
 
-- Spawn pressure: `timeRamp = min(4.2, 1 + t/400)`, `burst = min(6, 1 + floor(t/140))`. Pressure keeps climbing into the very late game (so screen-clear builds still face danger past ~18 min).
-- `scaleHp = 1 + idx*0.45 + t*0.0042` (≈4.6× at 9 min, ≈7.8× at 20 min).
-- `scaleDmg = 1 + idx*0.13 + t*0.0014`.
+Scaling is now **stage-aware** (see §4a) — the per-zone step and per-second ramp come from the active stage:
+
+- Spawn pressure: `timeRamp = min(4.2, 1 + t/400)` then `× stage.spawnMult`; `burst = min(6, 1 + floor(t/140))`. Pressure keeps climbing into the very late game.
+- `scaleHp = (1 + idx*0.45 + t*stage.hpRamp) * stage.difficulty`.
+- `scaleDmg = (1 + idx*0.13 + t*stage.dmgRamp) * (1 + (stage.difficulty-1)*0.5)` — damage scales more gently than HP, so deeper stages get spongier/more crowded without one-shotting.
 - Bosses spawn on a timer (`bossT`).
 
 ### Pickups / XP
-XP gems drop from kills. Pickup magnet is intentionally **small** (base radius 48) and only pulls when you're genuinely close — collecting XP is a positioning decision. The Sensor Array passive widens it (+40%/level). Rare HP drops; bosses always drop HP.
+XP gems drop from kills. Pickup magnet is intentionally **small** (base radius 48) and only pulls when you're genuinely close — collecting XP is a positioning decision. The Sensor Array passive widens it (+40%/level). Rare HP drops; bosses always drop HP. Pickups are pushed via **`pushPickup`** (cap-enforced; an XP gem that can't fit folds its value into the oldest gem so no progression is lost).
+
+---
+
+## 4a. Stages, persistence, options, validation (v4.0)
+
+### Stages (the multi-level structure — Roadmap #1)
+A **stage** is a whole run. The `STAGES` registry reuses the shared zone progression but layers on a difficulty envelope and a win condition. Each stage: `{ id, numeral, name, flavor, difficulty, spawnMult, hpRamp, dmgRamp, clearTime, endless, clearFlavor }`. Stage N starts harder than N-1.
+
+- `activeStage()` → `STAGES[G.stageIdx]` (the active run *and* the title selection).
+- **Win:** the loop's `safeCall('progress', …)` calls `stageClear()` when `!endless && G.t >= clearTime`. That records the best, unlocks the next stage, and shows the stage-clear screen (descend deeper / surface). The final stage is `endless`.
+- **Stage select** lives on the title screen (`renderStageSelect()` / `selectStage(±1)`): prev/next, goal, per-stage best, and a "sealed" state for locked stages. `descendPressed()` refuses to start a locked stage.
+- **States added:** `G.state` can now also be `'cleared'`. Flow states are `title / play / levelup / artifact / pause / cleared / over`.
+- **To add a stage:** append to `STAGES`. Nothing else needs editing.
+
+### Persistence (Roadmap #2)
+`SAVE = { unlocked, best:{stageId:depth}, options:{} }`, key `abyssal_vessel_save_v1`. `loadSave()` / `persistSave()` wrap **all** `localStorage` access in try/catch — on failure (e.g. the old artifact sandbox) the game runs on the in-memory `SAVE` with no persistence. Real storage works on GitHub Pages. **Never let storage throw into the game.**
+
+### Options / customization
+`OPTIONS` (persisted in `SAVE.options`) is edited by a data-driven options screen built from `OPTION_SCHEMA` (toggle or cycle rows). Current options: screen shake, damage numbers, reduced motion, beam intensity, starting weapon. Render-time options are read live (`shake()`, `spawnHitParticles`, the flashlight `lightR`, damage-number rendering); per-run options apply in `applyOptionsToRun()` (starting weapon). **To add an option:** add a row to `OPTION_SCHEMA` and read `OPTIONS.<key>` where it matters.
+
+### Content validation
+`validateContent()` runs once at load and returns a list of problems (missing fields, unknown schools, evolution recipes pointing at non-existent/mis-flagged weapons, non-reversible artifacts, malformed stages, etc.). It's **non-fatal** — logs `console.warn`, exposed as `CONTENT_ISSUES`, and the smoke test asserts it's empty. Add a check here whenever you add a required field to a content table.
+
+### Caps (now fully enforced on push)
+`pushEffect`, **`pushPickup`**, **`pushParticle`** all enforce `CAPS`; enemy death-splits and boss spawns (`spawnEnemyAt` returns `null` at cap) respect the enemy cap. An idle/AFK player can no longer grow any array without bound.
 
 ---
 
@@ -153,32 +184,32 @@ XP gems drop from kills. Pickup magnet is intentionally **small** (base radius 4
 
 This project was built **without** a normal toolchain, so there's a manual but reliable cycle. In Claude Code with Node available, replicate it:
 
-1. **Edit** the inline `<script>` in `abyssal-vessel.html`.
-2. **Extract & syntax-check** the script:
+1. **Edit** the inline `<script>` in `index.html`.
+2. **Run the gate** — extract → `node --check` → headless smoke test:
    ```bash
-   python3 -c "import re; h=open('abyssal-vessel.html').read(); open('game.js','w').write(re.search(r'<script>(.*?)</script>', h, re.DOTALL).group(1))"
-   node --check game.js
+   bash test/check.sh
    ```
-3. **Run the test harnesses** (Node scripts that mock `window`/`document`/`canvas`). Key ones built during development:
-   - `browser-mock-test.js` — runs 21600 frames (~6 min) with a canvas mock that **throws** on bad inputs (negative radius, out-of-range globalAlpha) to catch browser-only crashes the no-op mock misses.
-   - `null-sabotage-test.js` — nulls `G.player` repeatedly to prove the null-guards hold.
-   - `bound-test.js` — fully-maxed loadout, verifies every entity array stays under its cap and reports frame compute (median/p95/max µs).
-   - Plus task-specific probes (evolution recipes, skip logic, etc.).
-   > These harnesses aren't in the repo yet — **recreate or commit them.** The mock pattern: a `Proxy`-wrapped canvas ctx that validates `globalAlpha`/`arc`/`ellipse`/gradient radii, fake DOM elements with event-listener capture, a manual RAF queue, and `eval` of the extracted script with `G`/`WEAPONS`/etc. exposed on `window` for assertions.
-4. **Bump the version** in two places (subtitle + console log):
+   The harness (now committed under `test/`) is the recreation of the dev tooling earlier handoffs described:
+   - `test/mock-env.mjs` — fake DOM + a **strict** canvas mock that *throws* on the inputs a real browser rejects (negative/non-finite radii, out-of-range `globalAlpha`), plus a virtual clock (`performance`/`requestAnimationFrame`/`setTimeout`). It `vm`-evaluates the extracted script and drives frames manually.
+   - `test/smoke.mjs` — boots title→play, drives ~10 min of game time, forces level-ups, exercises the stage-clear/unlock/persistence flow and death, and asserts: no surfaced errors, **caps hold**, the sanitizer holds, and `CONTENT_ISSUES` is empty.
+   - The game cooperates via a **test seam**: when `window.__avExpose` is set before the script runs, it publishes `G`/`CAPS`/`WEAPONS`/`STAGES`/`SAVE`/`OPTIONS`/… on `window.__av`. Never set in production.
+   > Still worth adding later: a fully-maxed `bound-test` (frame compute µs) and a `null-sabotage` probe. The mock in `mock-env.mjs` is the reusable base.
+3. **Bump the version** in two places (subtitle + console log):
    ```bash
-   sed -i "s/MK VII · vX.X/MK VII · vY.Y/; s/ABYSSAL VESSEL vX.X/ABYSSAL VESSEL vY.Y/" abyssal-vessel.html
+   sed -i "s/MK VII · vX.X/MK VII · vY.Y/; s/ABYSSAL VESSEL vX.X/ABYSSAL VESSEL vY.Y/" index.html
    ```
    The game logs `ABYSSAL VESSEL vX.X` to the console on load (plain text — do not re-add `%c` styling; it leaks markup on mobile consoles).
-5. **Test in a real browser** on a phone or with mobile emulation.
+4. **Test in a real browser** on a phone or with mobile emulation.
 
-**Golden rule:** never ship a change without `node --check` passing AND `browser-mock-test.js` passing. Several past crashes were brace-mismatches from `str_replace` edits that silently broke function boundaries.
+**Golden rule:** never ship a change without `bash test/check.sh` passing. Several past crashes were brace-mismatches from text edits that silently broke function boundaries — `node --check` (step 1 of the gate) catches exactly those.
 
 ---
 
-## 6. Current state & balance notes (as of v3.2)
+## 6. Current state & balance notes (as of v4.0)
 
 Working well: the early game pace, the chest/artifact loop, weapon maxing at L4, the skip-to-bank option, evolutions being reachable, performance/stability.
+
+> **v4.0 balance is unplaytested.** The stage difficulty curve (`difficulty`/`spawnMult`/`hpRamp`/`dmgRamp` per stage in `STAGES`) was set by reasoning, not play. Expect to tune it: the step between stages, and whether stage IV (endless) stays survivable long enough to feel like the payoff. All knobs are in the `STAGES` table.
 
 Recent balance work has been an ongoing "tame the overpowered evolutions" pass:
 - **Resonance Collapse** (v3.2): reworked from an instant 6-implosion carpet every 1.3s to a **sequential cascade** — smaller wave + 4 staggered implosions (~0.18s apart) on a 3.2s cooldown.
@@ -200,9 +231,9 @@ Recent balance work has been an ongoing "tame the overpowered evolutions" pass:
 
 ## 8. Roadmap (owner's stated direction, in priority order)
 
-1. **Multi-level / stage system.** Discrete levels, each starting harder than the last (stronger/faster enemies, higher base difficulty). Clear ~10 minutes on a level to unlock the next. This is the natural next big feature now that combos exist. The current endless mode is effectively "Level 1."
-2. **Per-level high scores** (personal best per level). Kept in memory only — **browser storage APIs are NOT available in the artifact host**; if persistence is needed it must be real `localStorage` in a standalone deployment (e.g. GitHub Pages), not the artifact sandbox.
-3. **More balance passes** on evolutions (see above) and on individual weapons.
+1. ✅ **Multi-level / stage system.** *Done in v4.0* — `STAGES` registry, escalating difficulty, survive `clearTime` to unlock the next, stage select + stage-clear screens. See §4a. (Tuning the difficulty curve across stages is ongoing — see §6/§7.)
+2. ✅ **Per-level high scores.** *Done in v4.0* — per-stage bests in `SAVE.best`, persisted via guarded `localStorage` (works on GitHub Pages; in-memory fallback elsewhere). See §4a.
+3. **More balance passes** on evolutions (see above), on individual weapons, and now **across stages** (is the difficulty step from stage to stage right? does stage IV stay survivable long enough to feel like a payoff?). The numbers are all in the `STAGES`/`WEAPONS`/`EVOLUTIONS` tables — easy to tune, best done from playtest feedback.
 4. **Weapon-behavior variety / polish** — e.g. the swarm/drone-hive could have movement variations (spread in a radius, squiggly paths, splitting to different targets) instead of all swarming together. Texture/feel improvements.
 5. **More weapons & artifacts** over time — the system is data-driven and designed to scale (each new weapon implies at least one new artifact and at least one evolution recipe).
 6. **Background / environment variety** eventually — right now it's a readable blue-to-black gradient by depth; distinct themed levels (Atlantis, hadal trench, etc.) are a "someday" idea. The owner explicitly does **not** want to sacrifice the current high readability for texture prematurely.
@@ -211,20 +242,21 @@ Recent balance work has been an ongoing "tame the overpowered evolutions" pass:
 
 ## 9. Quick reference — key symbols in the script
 
-- State: `G` (everything), `G.state`, `G.t`, `G.player`, `G.bonus` (on player).
+- State: `G` (everything), `G.state` (`title/play/levelup/artifact/pause/cleared/over`), `G.t`, `G.player`, `G.bonus` (on player), `G.stageIdx`.
 - Loop/safety: `freshStart()`, `loop()`, `window.__avLoop`, `window.__avDriverInstalled`, `window.__avGen`, `safeCall()`, `window.__showErr()`.
-- Perf: `grid` (+ `grid.forEachInRadius`, `nearestEnemy`), `CAPS`, `pushEffect()`.
-- Data tables: `WEAPONS`, `SCHOOLS`, `EVOLUTIONS`, `ARTIFACTS` (+ `ARTIFACT_SLOTS`), `PASSIVES`, `ZONES`, `ENEMIES`.
-- Flow: `spawnEnemy()`, `spawnBoss()`, `spawnChest()`, `killEnemy()`, `damageEnemy()`, `damagePlayer()`, `levelUp()`, `skipLevelUp()`, `buildUpgradePool()`, `presentUpgrades()`, `getEvolution()`, `openChest()`, `equipArtifact()`, `swapArtifact()`.
-- Update fns (run via `safeCall` when `state==='play'`): `updatePlayer`, `updateEnemies`, `updateProjectiles`, `updateEffects`, `updateSpires`, `updateDeployables` (orbiters/drones/mines), `updatePickups`, `updateChests`, `updateParticles`, `ambientParticles`, `updateHUD`, then `render`.
+- Perf/caps: `grid` (+ `grid.forEachInRadius`, `nearestEnemy`), `CAPS`, `pushEffect()`, `pushPickup()`, `pushParticle()`.
+- Data tables: `WEAPONS`, `SCHOOLS`, `EVOLUTIONS`, `ARTIFACTS` (+ `ARTIFACT_SLOTS`), `PASSIVES`, `ZONES`, `ENEMIES`, `STAGES`.
+- Stages/persistence/options: `activeStage()`, `SAVE` (+ `loadSave`/`persistSave`), `OPTIONS` (+ `OPTION_SCHEMA`, `applyOptionsToRun`), `validateContent()`/`CONTENT_ISSUES`.
+- Flow: `startGame()`, `gameOver()`, `stageClear()`, `renderStageSelect()`/`selectStage()`, `openOptions()`/`renderOptions()`, `returnToTitle()`, `spawnEnemy()`, `spawnBoss()`, `spawnChest()`, `killEnemy()`, `damageEnemy()`, `damagePlayer()`, `levelUp()`, `skipLevelUp()`, `buildUpgradePool()`, `presentUpgrades()`, `getEvolution()`, `openChest()`, `equipArtifact()`, `swapArtifact()`.
+- Update fns (run via `safeCall` when `state==='play'`): `updatePlayer`, `updateEnemies`, `updateProjectiles`, `updateEffects`, `updateSpires`, `updateDeployables` (orbiters/drones/mines), `updatePickups`, `updateChests`, `updateParticles`, `ambientParticles`, `updateHUD`, then `render`. Also `progress` (stage-clear check) runs first.
+- Test seam: `window.__avExpose` → `window.__av` (read refs for the headless harness; never set in production).
 
 ---
 
-## 10. Getting it into GitHub
+## 10. GitHub & deployment
 
-1. Put `abyssal-vessel.html` at the repo root (rename to `index.html` if you want GitHub Pages to serve it directly).
-2. Commit the test harnesses (recreate per §5) under e.g. `/test`, plus a small README pointing at this handoff.
-3. For a playable hosted build, **GitHub Pages** serves the single HTML file as-is. In that environment real `localStorage` works, which unblocks persistent high scores (Roadmap #2) — unlike the artifact sandbox.
-4. Suggested first commit message: `Abyssal Vessel v3.2 — initial import (deep-sea survivor-like, single-file canvas game)`.
+- The game is at the repo root as **`index.html`**; the test harness is committed under **`test/`** (run `bash test/check.sh`).
+- For a playable hosted build, **GitHub Pages** serves the single HTML file as-is. There, real `localStorage` works, so stage unlocks / per-stage bests / options persist (Roadmap #2). In a storage-less sandbox the game still runs (in-memory `SAVE`).
+- To enable Pages: repo **Settings → Pages → Deploy from branch**, pick the branch + root, and it serves `index.html`.
 
 — End of handoff —

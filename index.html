@@ -700,8 +700,42 @@ const angle = (a, b) => Math.atan2(b.y - a.y, b.x - a.x);
 const lerp = (a, b, t) => a + (b - a) * t;
 
 // =========================================================================
+//  ░░ ADDING CONTENT — read this before extending the game ░░
+//
+//  The game is data-driven: it is built out of plain tables, and almost every
+//  kind of content is "append one entry, change nothing else." validateContent()
+//  (further down) checks each entry at load and the smoke test fails on any
+//  problem, so mistakes surface immediately instead of mid-run.
+//
+//  ADD A WEAPON →  add an entry to WEAPONS { id, name, school, icon, desc,
+//      baseCD, maxLevel, levels:[...perLevel], fire(w,p) }. Use the existing
+//      school or add one to SCHOOLS. Weapons read artifact bonuses from
+//      p.bonus and per-school damage via schoolMult(p, school). For persistent
+//      entities (orbiters/drones/mines/voids) reconcile counts in fire().
+//      Then give it an evolution (below). It becomes a starting-weapon option
+//      automatically.
+//  ADD AN EVOLUTION →  add an evolution weapon to WEAPONS with evolution:true
+//      and maxLevel:1, plus a recipe { from:[a,b], to } to EVOLUTIONS. Both
+//      "from" weapons at max level unlock it; evolving consumes both.
+//  ADD AN ARTIFACT →  add to ARTIFACTS { id, name, icon, desc, apply(p),
+//      remove(p) }. apply/remove MUST be exact inverses (slots are swappable).
+//      Write into p.bonus so weapons pick it up.
+//  ADD A PASSIVE  →  add to PASSIVES { id, name, desc, max, apply(p,lvl) }.
+//  ADD AN ENEMY   →  add to ENEMIES { name, hp, dmg, speed, radius, color,
+//      glow, xp, behavior, draw(ctx,e) }, then reference it in a zone pool.
+//  ADD A STAGE    →  append to STAGES (see the STAGES header for knobs).
+//  ADD AN OPTION  →  add a row to OPTION_SCHEMA and read OPTIONS.<key> where
+//      it applies (render-time) or in applyOptionsToRun() (per-run).
+//
+//  Performance rules that are load-bearing (don't bypass): proximity queries go
+//  through grid.forEachInRadius / nearestEnemy; pushes go through pushEffect /
+//  pushPickup / pushParticle so CAPS hold; timed effects (setTimeout) must
+//  guard `if (G.state !== 'play' || !G.player) return;`.
+// =========================================================================
+
+// =========================================================================
 //  WEAPON DEFINITIONS
-//  Eight schools that combine into evolutions. Each has 5 levels.
+//  Schools that combine into evolutions. Base weapons max at level 4.
 // =========================================================================
 const SCHOOLS = {
   sonar:      { name: 'Sonar',       color: '#5be7ff' },
@@ -2320,6 +2354,88 @@ function persistSave() {
   } catch (e) { /* no storage — in-memory only */ }
 }
 loadSave();
+
+// =========================================================================
+//  CONTENT VALIDATION
+//
+//  Everything the game is made of lives in plain data tables — SCHOOLS,
+//  WEAPONS, EVOLUTIONS, PASSIVES, ARTIFACTS, ENEMIES, ZONES, STAGES — so
+//  adding content is "append an entry." The cost of that convenience is that a
+//  typo (missing field, wrong school name, evolution pointing at a weapon that
+//  doesn't exist) used to fail silently or crash mid-run.
+//
+//  validateContent() runs once at load and reports such mistakes up front. It
+//  is non-fatal: it logs warnings (and the test harness asserts there are
+//  none) but never throws, so a content bug degrades rather than bricking the
+//  game. Add a check here whenever you add a new required field to a table.
+// =========================================================================
+function validateContent() {
+  const issues = [];
+  const isFn = (f) => typeof f === 'function';
+  const isNum = (n) => typeof n === 'number' && isFinite(n);
+
+  for (const id in SCHOOLS) {
+    const s = SCHOOLS[id];
+    if (!s.name || !s.color) issues.push(`school "${id}" missing name/color`);
+  }
+  for (const id in WEAPONS) {
+    const w = WEAPONS[id];
+    if (!w.name) issues.push(`weapon "${id}" missing name`);
+    if (!w.school || !SCHOOLS[w.school]) issues.push(`weapon "${id}" has unknown school "${w.school}"`);
+    if (!isFn(w.fire)) issues.push(`weapon "${id}" missing fire()`);
+    if (!Array.isArray(w.levels) || w.levels.length < 1) issues.push(`weapon "${id}" missing levels[]`);
+    if (!isNum(w.maxLevel)) issues.push(`weapon "${id}" missing numeric maxLevel`);
+  }
+  const recipeTargets = new Set();
+  EVOLUTIONS.forEach((r, i) => {
+    if (!Array.isArray(r.from) || r.from.length !== 2) issues.push(`evolution #${i} needs exactly 2 "from" weapons`);
+    else r.from.forEach(f => {
+      if (!WEAPONS[f]) issues.push(`evolution #${i} "from" references unknown weapon "${f}"`);
+      else if (WEAPONS[f].evolution) issues.push(`evolution #${i} "from" weapon "${f}" is itself an evolution`);
+    });
+    if (!WEAPONS[r.to]) issues.push(`evolution #${i} "to" references unknown weapon "${r.to}"`);
+    else if (!WEAPONS[r.to].evolution) issues.push(`evolution #${i} target "${r.to}" is not flagged evolution:true`);
+    recipeTargets.add(r.to);
+  });
+  for (const id in WEAPONS) {
+    if (WEAPONS[id].evolution && !recipeTargets.has(id)) issues.push(`evolution weapon "${id}" has no recipe in EVOLUTIONS (unreachable)`);
+  }
+  for (const id in PASSIVES) {
+    const p = PASSIVES[id];
+    if (!p.name || !p.desc) issues.push(`passive "${id}" missing name/desc`);
+    if (!isFn(p.apply)) issues.push(`passive "${id}" missing apply()`);
+    if (!isNum(p.max)) issues.push(`passive "${id}" missing numeric max`);
+  }
+  for (const id in ARTIFACTS) {
+    const a = ARTIFACTS[id];
+    if (!a.name || !a.desc || !a.icon) issues.push(`artifact "${id}" missing name/desc/icon`);
+    // Artifacts occupy swappable slots, so they MUST be reversible.
+    if (!isFn(a.apply)) issues.push(`artifact "${id}" missing apply()`);
+    if (!isFn(a.remove)) issues.push(`artifact "${id}" missing remove() (must be reversible)`);
+  }
+  for (const id in ENEMIES) {
+    const e = ENEMIES[id];
+    if (!e.name) issues.push(`enemy "${id}" missing name`);
+    if (!isNum(e.hp) || !isNum(e.dmg) || !isNum(e.speed) || !isNum(e.radius)) issues.push(`enemy "${id}" missing numeric hp/dmg/speed/radius`);
+    if (!e.behavior) issues.push(`enemy "${id}" missing behavior`);
+    if (!isFn(e.draw)) issues.push(`enemy "${id}" missing draw()`);
+  }
+  const stageIds = new Set();
+  STAGES.forEach((st, i) => {
+    if (!st.id) issues.push(`stage #${i} missing id`);
+    else if (stageIds.has(st.id)) issues.push(`stage #${i} duplicate id "${st.id}"`);
+    stageIds.add(st.id);
+    if (!st.numeral || !st.name) issues.push(`stage "${st.id}" missing numeral/name`);
+    if (!isNum(st.difficulty) || !isNum(st.spawnMult) || !isNum(st.hpRamp) || !isNum(st.dmgRamp)) issues.push(`stage "${st.id}" missing numeric difficulty/spawnMult/hpRamp/dmgRamp`);
+    if (!st.endless && !isNum(st.clearTime)) issues.push(`stage "${st.id}" needs numeric clearTime or endless:true`);
+  });
+
+  if (issues.length) {
+    try { console.warn('ABYSSAL VESSEL — content validation found ' + issues.length + ' issue(s):\n  ' + issues.join('\n  ')); } catch (e) {}
+  }
+  return issues;
+}
+const CONTENT_ISSUES = validateContent();
 
 // Enemy types that fire projectiles — capped so they can't flood the screen
 const RANGED_TYPES = { squid: true };
@@ -4398,7 +4514,7 @@ if (!window.__avDriverInstalled) {
 if (typeof window !== 'undefined' && window.__avExpose) {
   window.__av = {
     G, CAPS, WEAPONS, EVOLUTIONS, ARTIFACTS, PASSIVES, ENEMIES, ZONES,
-    STAGES, SAVE, OPTIONS, startGame, makePlayer, stageClear, activeStage, damagePlayer,
+    STAGES, SAVE, OPTIONS, CONTENT_ISSUES, startGame, makePlayer, stageClear, activeStage, damagePlayer,
   };
 }
 
