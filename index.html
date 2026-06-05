@@ -2933,10 +2933,17 @@ function updateDeployables(dt) {
     }
   }
 
-  // Drones — trail the player, fire at nearest enemy in range on a timer.
-  for (const d of G.drones) {
-    const tx = p.x + Math.cos(d.offAng + G.t * 0.8) * 52;
-    const ty = p.y + Math.sin(d.offAng + G.t * 0.8) * 52;
+  // Drones — orbit the player, fire at nearest enemy in range on a timer. Like
+  // the orbiters, each drone's angle is derived from its index + a shared
+  // rotation phase every frame, so they stay perfectly equidistant no matter
+  // how the count changes (level-ups / artifacts). They lerp to the new slot,
+  // so a count change reshuffles the ring smoothly instead of snapping.
+  const droneN = G.drones.length;
+  for (let i = 0; i < droneN; i++) {
+    const d = G.drones[i];
+    const ang = G.t * 0.8 + (i / droneN) * Math.PI * 2;
+    const tx = p.x + Math.cos(ang) * 52;
+    const ty = p.y + Math.sin(ang) * 52;
     d.x = lerp(d.x, tx, dt * 6);
     d.y = lerp(d.y, ty, dt * 6);
     d.fireT -= dt;
