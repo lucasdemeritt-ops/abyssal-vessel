@@ -3935,6 +3935,17 @@ if (!window.__avDriverInstalled) {
   requestAnimationFrame(drive);
 }
 
+// Test/debug seam: when a headless harness sets window.__avExpose BEFORE this
+// script runs, expose read references to core state and content registries so
+// tests can drive the game and assert invariants. Never set in production, so
+// this is a no-op in the shipped game (zero global surface, zero overhead).
+if (typeof window !== 'undefined' && window.__avExpose) {
+  window.__av = {
+    G, CAPS, WEAPONS, EVOLUTIONS, ARTIFACTS, PASSIVES, ENEMIES, ZONES,
+    startGame, makePlayer,
+  };
+}
+
 })(window.__avGen);
 // initial best display on title (handled by CSS hidden state)
 </script>
