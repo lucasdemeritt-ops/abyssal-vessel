@@ -108,13 +108,15 @@
   }
 
   /* ===== TITLE SCREEN ===== */
-  #title-screen, #upgrade-screen, #game-over-screen {
+  #title-screen, #upgrade-screen, #game-over-screen, #stage-clear-screen, #options-screen {
     position: absolute; inset: 0; z-index: 20;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 24px;
     background: radial-gradient(ellipse at center, rgba(2,5,15,0.85) 0%, rgba(0,0,0,0.97) 100%);
     pointer-events: auto;
   }
+  /* allow tall menus (stage select / options) to scroll on short screens */
+  #title-screen, #stage-clear-screen, #options-screen { overflow-y: auto; }
   #title-screen .title {
     font-family: 'Cinzel', serif;
     font-size: clamp(28px, 8vw, 56px);
@@ -167,6 +169,82 @@
   .btn:active { background: rgba(91, 231, 255, 0.15); transform: scale(0.98); }
   .btn.danger { color: var(--hot); border-color: var(--hot); text-shadow: 0 0 10px rgba(255, 48, 96, 0.4); box-shadow: 0 0 30px rgba(255, 48, 96, 0.15) inset, 0 0 20px rgba(255, 48, 96, 0.2); }
   .btn.danger:active { background: rgba(255, 48, 96, 0.15); }
+  .btn-ghost {
+    margin-top: 12px; color: var(--pale); border-color: var(--dim);
+    box-shadow: none; text-shadow: none; opacity: 0.7; font-size: 12px; padding: 10px 24px;
+  }
+  .btn-ghost:active { background: rgba(168, 227, 255, 0.08); }
+  .btn.disabled { opacity: 0.35; pointer-events: none; filter: grayscale(0.6); }
+
+  /* ===== STAGE SELECT ===== */
+  #stage-select {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-bottom: 28px; max-width: 380px; width: 100%;
+  }
+  .stage-arrow {
+    flex: 0 0 auto;
+    font-family: 'Cinzel', serif; font-size: 28px; line-height: 1;
+    color: var(--cyan); background: rgba(2,5,15,0.6);
+    border: 1px solid rgba(91,231,255,0.35); border-radius: 2px;
+    width: 44px; height: 44px; cursor: pointer;
+    text-shadow: 0 0 10px rgba(91,231,255,0.4);
+  }
+  .stage-arrow:active { background: rgba(91,231,255,0.15); }
+  .stage-arrow.disabled { opacity: 0.2; pointer-events: none; }
+  .stage-info {
+    flex: 1 1 auto; text-align: center;
+    border: 1px solid rgba(91,231,255,0.18); border-radius: 3px;
+    padding: 14px 12px; background: rgba(2,6,16,0.5);
+    min-height: 132px; display: flex; flex-direction: column; justify-content: center; gap: 5px;
+  }
+  .stage-numeral {
+    font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.4em;
+    color: var(--violet); opacity: 0.85;
+  }
+  .stage-name {
+    font-family: 'Cinzel', serif; font-size: 19px; letter-spacing: 0.12em;
+    color: var(--bone); text-shadow: 0 0 18px rgba(91,231,255,0.3);
+  }
+  .stage-flavor {
+    font-family: 'Spectral', serif; font-style: italic; font-size: 12px;
+    line-height: 1.55; color: var(--bone); opacity: 0.5; max-width: 300px; margin: 2px auto 0;
+  }
+  .stage-goal {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 0.22em;
+    color: var(--teal); opacity: 0.8; margin-top: 4px;
+  }
+  .stage-best {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 0.22em;
+    color: var(--magenta); opacity: 0.75;
+  }
+  .stage-locked {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.15em;
+    color: var(--hot); opacity: 0.85; margin-top: 6px;
+  }
+  .clear-title { color: var(--warm) !important; text-shadow: 0 0 24px rgba(245,232,192,0.5) !important; }
+
+  /* ===== OPTIONS ===== */
+  #options-list { width: 100%; max-width: 380px; margin-bottom: 24px; }
+  .opt-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 13px 14px; margin-bottom: 8px;
+    border: 1px solid rgba(91,231,255,0.16); border-radius: 3px; background: rgba(2,6,16,0.5);
+  }
+  .opt-label { display: flex; flex-direction: column; gap: 3px; text-align: left; }
+  .opt-name {
+    font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.1em; color: var(--bone);
+  }
+  .opt-desc {
+    font-family: 'Spectral', serif; font-style: italic; font-size: 11px; color: var(--bone); opacity: 0.45;
+  }
+  .opt-control {
+    flex: 0 0 auto; font-family: 'Share Tech Mono', monospace; font-size: 12px; letter-spacing: 0.1em;
+    color: var(--cyan); background: rgba(2,5,15,0.6); border: 1px solid var(--cyan); border-radius: 2px;
+    padding: 9px 14px; min-width: 92px; text-align: center; cursor: pointer;
+    text-shadow: 0 0 8px rgba(91,231,255,0.35);
+  }
+  .opt-control:active { background: rgba(91,231,255,0.15); }
+  .opt-control.off { color: var(--dim); border-color: var(--dim); text-shadow: none; }
 
   .corners { position: absolute; inset: 24px; pointer-events: none; }
   .corners::before, .corners::after {
@@ -380,14 +458,29 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.2</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v4.0</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
     Pilot the experimental hull. Integrate what you find.<br>
     Descend.
   </div>
+
+  <div id="stage-select">
+    <button class="stage-arrow" id="stage-prev">‹</button>
+    <div class="stage-info">
+      <div class="stage-numeral" id="stage-numeral">I</div>
+      <div class="stage-name" id="stage-name">First Descent</div>
+      <div class="stage-flavor" id="stage-flavor"></div>
+      <div class="stage-goal" id="stage-goal"></div>
+      <div class="stage-best" id="stage-best"></div>
+      <div class="stage-locked hidden" id="stage-locked">◈ SEALED — clear the previous descent to break the seal</div>
+    </div>
+    <button class="stage-arrow" id="stage-next">›</button>
+  </div>
+
   <button class="btn" id="start-btn">DESCEND</button>
+  <button class="btn btn-ghost" id="options-btn">OPTIONS</button>
   <div style="margin-top: 20px; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.2em; color: var(--pale); opacity: 0.4; text-align: center;">
     DRAG TO MANEUVER<br>
     SYSTEMS FIRE AUTONOMOUSLY
@@ -430,6 +523,39 @@
     </div>
   </div>
   <button class="btn" id="restart-btn">DESCEND AGAIN</button>
+  <button class="btn btn-ghost" id="go-menu-btn">TO SURFACE</button>
+</div>
+
+<div id="stage-clear-screen" class="hidden">
+  <div class="corners"></div>
+  <div class="corners-2"></div>
+  <div class="go-title clear-title" id="sc-title">DESCENT COMPLETE</div>
+  <div class="go-flavor" id="sc-flavor"></div>
+  <div class="stats-grid">
+    <div class="stat-item">
+      <div class="label">DEPTH REACHED</div>
+      <div class="val" id="sc-depth">0M</div>
+    </div>
+    <div class="stat-item">
+      <div class="label">TIME SURVIVED</div>
+      <div class="val" id="sc-time">0:00</div>
+    </div>
+    <div class="stat-item">
+      <div class="label">KILLS</div>
+      <div class="val" id="sc-kills">0</div>
+    </div>
+  </div>
+  <button class="btn" id="sc-next-btn">DESCEND DEEPER</button>
+  <button class="btn btn-ghost" id="sc-return-btn">TO SURFACE</button>
+</div>
+
+<div id="options-screen" class="hidden">
+  <div class="corners"></div>
+  <div class="corners-2"></div>
+  <div class="upgrade-header">SYSTEMS CONFIG</div>
+  <div class="upgrade-subheader">CALIBRATE THE VESSEL</div>
+  <div id="options-list"></div>
+  <button class="btn" id="options-done-btn">CONFIRM</button>
 </div>
 
 <div id="err-overlay" style="position:absolute;top:0;left:0;right:0;z-index:1000;background:rgba(120,0,20,0.95);color:#fff;font-family:monospace;font-size:11px;padding:8px;white-space:pre-wrap;display:none;pointer-events:auto;max-height:60vh;overflow:auto;border-bottom:2px solid #ff3060;"></div>
@@ -477,7 +603,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v3.2'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v4.0'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -1831,6 +1957,7 @@ const G = {
   bossT: 0,
   chestT: 0,
   zoneIdx: 0,
+  stageIdx: 0,      // active descent (index into STAGES); also the title selection
   enemiesKilled: 0,
   best: 0,
 };
@@ -1921,6 +2048,29 @@ function pushEffect(fx) {
   G.effects[G.effects.length] = fx;
 }
 
+// Push a pickup, but never exceed the cap. This only bites in degenerate cases
+// (e.g. an idle player not collecting anything) but guarantees the array can't
+// grow without bound. To avoid silently eating progression, an XP gem that
+// can't fit folds its value into the oldest XP gem instead of being dropped.
+function pushPickup(pk) {
+  if (G.pickups.length >= CAPS.pickups) {
+    if (pk.type === 'xp') {
+      for (const old of G.pickups) {
+        if (old.type === 'xp') { old.value += pk.value; return; }
+      }
+    }
+    G.pickups.shift();
+  }
+  G.pickups.push(pk);
+}
+
+// Push a particle only if there's room. Particles are purely cosmetic, so when
+// the budget is full we simply skip — never let them push the array over cap.
+function pushParticle(pt) {
+  if (G.particles.length >= CAPS.particles) return;
+  G.particles.push(pt);
+}
+
 const grid = {
   cell: 90,
   map: new Map(),
@@ -1983,7 +2133,7 @@ function killEnemy(e) {
   e.dying = true;
   G.enemiesKilled++;
   // XP drop
-  G.pickups.push({
+  pushPickup({
     type: 'xp', x: e.x, y: e.y,
     vx: rand(-30, 30), vy: rand(-30, 30),
     value: e.xp, life: 90, age: 0,
@@ -1991,7 +2141,7 @@ function killEnemy(e) {
   });
   // sometimes drop hp
   if (Math.random() < (e.boss ? 1 : 0.02)) {
-    G.pickups.push({
+    pushPickup({
       type: 'hp', x: e.x, y: e.y,
       vx: rand(-20, 20), vy: rand(-20, 20),
       value: e.boss ? 30 : 10, life: 45, age: 0, radius: 6,
@@ -2009,6 +2159,8 @@ function killEnemy(e) {
 function spawnHitParticles(x, y, color, count) {
   // Respect the particle budget. When the array is getting full (lots happening
   // on screen), quietly drop the request so we never tank the frame rate.
+  // Reduced-motion thins particle output for accessibility / low-end devices.
+  if (OPTIONS.reducedMotion) count = Math.ceil(count * 0.4);
   const room = CAPS.particles - G.particles.length;
   if (room <= 0) return;
   if (count > room) count = room;
@@ -2023,7 +2175,10 @@ function spawnHitParticles(x, y, color, count) {
   }
 }
 
-function shake(amt) { G.shake = Math.max(G.shake, amt); }
+function shake(amt) {
+  if (!OPTIONS.screenShake || OPTIONS.reducedMotion) return;
+  G.shake = Math.max(G.shake, amt);
+}
 
 function triggerRetaliation(p) {
   // Auto-blast when hit, on its own cooldown. A big retaliatory shockwave.
@@ -2080,6 +2235,92 @@ const ZONES = [
   { name: 'The Mouth', maxT: Infinity, pool: { tentacle: 3, eye_cluster: 3, void_maw: 2, anglerfish: 1.5, leviathan: 0.5 }, spawnRate: 1.35 },
 ];
 
+// =========================================================================
+//  STAGES (descents) — the multi-level structure.
+//
+//  A *zone* (above) is a depth band WITHIN a single run (its enemy pool and
+//  theming, advanced by elapsed time). A *stage* is a whole run: it reuses the
+//  shared zone progression but layers on a difficulty envelope and a win
+//  condition. Stage N starts harder than N-1 (higher base difficulty, faster
+//  scaling, more spawn pressure). Survive `clearTime` to clear a stage and
+//  unlock the next; the final stage is endless.
+//
+//  TO ADD A STAGE: append an entry here. Everything (selector UI, unlock
+//  chain, per-stage best, scaling) is driven from this table — nothing else
+//  needs editing. Knobs:
+//    difficulty : master multiplier on enemy HP (and, softened, on damage).
+//    spawnMult  : multiplier on how fast enemies arrive.
+//    hpRamp/dmgRamp : per-second scaling added on top of the per-zone step.
+//    clearTime  : seconds to survive to clear (ignored if endless).
+//    zones      : zone progression to use (defaults to the shared ZONES).
+// =========================================================================
+const STAGES = [
+  {
+    id: 'first_descent', numeral: 'I', name: 'First Descent',
+    flavor: 'The shelf gives way to open dark. Standard hull rating. Begin where every log ends.',
+    difficulty: 1.0, spawnMult: 1.0, hpRamp: 0.0042, dmgRamp: 0.0014,
+    clearTime: 600, endless: false,
+    clearFlavor: 'Ten minutes in the black, and the hull held. The trench noticed.',
+  },
+  {
+    id: 'cold_below', numeral: 'II', name: 'The Cold Below',
+    flavor: 'Colder, faster, hungrier. Whatever lives here learned from the last vessel.',
+    difficulty: 1.45, spawnMult: 1.18, hpRamp: 0.0050, dmgRamp: 0.0016,
+    clearTime: 600, endless: false,
+    clearFlavor: 'The cold could not fold you. Something deeper is listening now.',
+  },
+  {
+    id: 'ruined_deep', numeral: 'III', name: 'The Ruined Deep',
+    flavor: 'Drowned architecture and the things that nest in it. The pressure alone should kill you.',
+    difficulty: 2.0, spawnMult: 1.32, hpRamp: 0.0058, dmgRamp: 0.0018,
+    clearTime: 600, endless: false,
+    clearFlavor: 'You read the ruins and lived. There is only one descent left.',
+  },
+  {
+    id: 'the_mouth', numeral: 'IV', name: 'The Mouth',
+    flavor: 'The bottom of the world has an appetite. There is no clearing this — only how long you last.',
+    difficulty: 2.8, spawnMult: 1.5, hpRamp: 0.0066, dmgRamp: 0.0020,
+    clearTime: Infinity, endless: true,
+    clearFlavor: '',
+  },
+];
+
+// Active-stage helper: always returns a valid stage even if stageIdx drifts.
+function activeStage() {
+  return STAGES[G.stageIdx] || STAGES[0];
+}
+
+// =========================================================================
+//  PERSISTENCE — guarded localStorage.
+//
+//  Unlock progress, per-stage bests and options survive reloads when real
+//  storage is available (e.g. GitHub Pages). The old artifact host had no
+//  storage APIs, so every access is wrapped: on failure we silently fall back
+//  to the in-memory SAVE object and the game plays fine, just without
+//  persistence. Never let storage throw into the game.
+// =========================================================================
+const SAVE_KEY = 'abyssal_vessel_save_v1';
+const SAVE = { unlocked: 0, best: {}, options: {} };
+function loadSave() {
+  try {
+    const raw = window.localStorage && window.localStorage.getItem(SAVE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data && typeof data === 'object') {
+        SAVE.unlocked = Math.max(0, Math.min(STAGES.length - 1, data.unlocked | 0));
+        SAVE.best = (data.best && typeof data.best === 'object') ? data.best : {};
+        SAVE.options = (data.options && typeof data.options === 'object') ? data.options : {};
+      }
+    }
+  } catch (e) { /* no storage — in-memory only */ }
+}
+function persistSave() {
+  try {
+    if (window.localStorage) window.localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE));
+  } catch (e) { /* no storage — in-memory only */ }
+}
+loadSave();
+
 // Enemy types that fire projectiles — capped so they can't flood the screen
 const RANGED_TYPES = { squid: true };
 const RANGED_CAP = 4;
@@ -2096,11 +2337,12 @@ function weightedPick(pool) {
 }
 
 function currentZone() {
+  const zones = activeStage().zones || ZONES;
   let t = G.t;
-  for (let i = 0; i < ZONES.length; i++) {
-    if (t < ZONES[i].maxT) return { z: ZONES[i], idx: i };
+  for (let i = 0; i < zones.length; i++) {
+    if (t < zones[i].maxT) return { z: zones[i], idx: i };
   }
-  return { z: ZONES[ZONES.length - 1], idx: ZONES.length - 1 };
+  return { z: zones[zones.length - 1], idx: zones.length - 1 };
 }
 
 function spawnEnemy() {
@@ -2143,8 +2385,12 @@ function spawnEnemy() {
   const distFromPlayer = Math.sqrt(W * W + H * H) / 2 + 70;
   const x = G.player.x + Math.cos(dir) * distFromPlayer;
   const y = G.player.y + Math.sin(dir) * distFromPlayer;
-  const scaleHp = 1 + idx * 0.45 + G.t * 0.0042;
-  const scaleDmg = 1 + idx * 0.13 + G.t * 0.0014;
+  // Stage-aware scaling: the per-zone step + per-second ramp, then the stage's
+  // difficulty envelope. Damage scales more gently than HP so deeper stages get
+  // spongier and more crowded without one-shotting the player.
+  const st = activeStage();
+  const scaleHp = (1 + idx * 0.45 + G.t * st.hpRamp) * st.difficulty;
+  const scaleDmg = (1 + idx * 0.13 + G.t * st.dmgRamp) * (1 + (st.difficulty - 1) * 0.5);
   const e = {
     id: G.nextEnemyId++, type,
     x, y, vx: 0, vy: 0, angle: 0,
@@ -2167,11 +2413,15 @@ function spawnEnemy() {
   G.enemies.push(e);
 }
 
+// Spawn an enemy at a position (used by splits and bosses). Respects the enemy
+// cap so death-splits (e.g. Witness Cluster) can't push the array over its
+// bound during a screen-filling swarm. Returns the new enemy, or null if full.
 function spawnEnemyAt(type, x, y) {
+  if (G.enemies.length >= CAPS.enemies) return null;
   const def = ENEMIES[type];
   const idx = G.zoneIdx;
   const scaleHp = 1 + idx * 0.3;
-  G.enemies.push({
+  const e = {
     id: G.nextEnemyId++, type,
     x, y, vx: 0, vy: 0, angle: 0,
     hp: def.hp * scaleHp, maxHp: def.hp * scaleHp,
@@ -2185,7 +2435,9 @@ function spawnEnemyAt(type, x, y) {
     teleportCD: def.teleportCD || 0,
     pullVx: 0, pullVy: 0,
     ignite: null,
-  });
+  };
+  G.enemies.push(e);
+  return e;
 }
 
 function spawnBoss() {
@@ -2194,9 +2446,8 @@ function spawnBoss() {
   const type = idx >= 4 ? 'leviathan' : (idx >= 3 ? 'leviathan' : 'anglerfish');
   const dir = rand(0, Math.PI * 2);
   const d = Math.sqrt(W * W + H * H) / 2 + 90;
-  spawnEnemyAt(type, G.player.x + Math.cos(dir) * d, G.player.y + Math.sin(dir) * d);
-  // mark as boss
-  const e = G.enemies[G.enemies.length - 1];
+  const e = spawnEnemyAt(type, G.player.x + Math.cos(dir) * d, G.player.y + Math.sin(dir) * d);
+  if (!e) return; // at cap — skip this boss spawn
   e.boss = true;
   e.hp *= 1.5; e.maxHp = e.hp;
 }
@@ -2481,7 +2732,7 @@ function updateEffects(dt) {
         for (let i = 0; i < 4; i++) {
           const a = rand(0, Math.PI * 2);
           const r = rand(fx.radius * 0.5, fx.radius);
-          G.particles.push({
+          pushParticle({
             x: fx.x + Math.cos(a) * r,
             y: fx.y + Math.sin(a) * r,
             vx: Math.cos(a) * 30, vy: Math.sin(a) * 30 - 20,
@@ -2740,7 +2991,7 @@ function ambientParticles(dt) {
   if (Math.random() < dt * 8) {
     const a = rand(0, Math.PI * 2);
     const r = rand(W / 2, W / 2 + 50);
-    G.particles.push({
+    pushParticle({
       x: G.player.x + Math.cos(a) * r,
       y: G.player.y + Math.sin(a) * r,
       vx: rand(-10, 10), vy: rand(-30, -5),
@@ -3168,10 +3419,10 @@ function render() {
     ctx.restore();
   }
 
-  // damage bursts (numbers)
+  // damage bursts (numbers) — can be turned off in options
   ctx.font = "bold 12px 'Share Tech Mono', monospace";
   ctx.textAlign = 'center';
-  for (const b of G.bursts) {
+  if (OPTIONS.damageNumbers) for (const b of G.bursts) {
     const alpha = 1 - b.age / b.life;
     ctx.fillStyle = b.color;
     ctx.globalAlpha = alpha;
@@ -3186,7 +3437,7 @@ function render() {
   // Render darkness with a radial hole at player
   const screenPx = W / 2 + sx;
   const screenPy = H / 2 + sy;
-  const lightR = 220 * p.stats.light;
+  const lightR = 220 * p.stats.light * OPTIONS.lightIntensity;
   const darkness = ctx.createRadialGradient(screenPx, screenPy, 0, screenPx, screenPy, lightR);
   const ambient = 0.5 + idx * 0.08;
   darkness.addColorStop(0, 'rgba(0,0,0,0)');
@@ -3257,7 +3508,7 @@ function drawPlayer(ctx, p) {
   ctx.rotate(p.lastMoveAngle);
 
   // outer light glow
-  const lightR = 220 * p.stats.light;
+  const lightR = 220 * p.stats.light * OPTIONS.lightIntensity;
   const lightGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, lightR);
   lightGrad.addColorStop(0, 'rgba(255, 245, 210, 0.18)');
   lightGrad.addColorStop(0.5, 'rgba(91, 231, 255, 0.05)');
@@ -3741,6 +3992,36 @@ document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 // =========================================================================
 //  GAME FLOW
 // =========================================================================
+// Player-facing options (persisted in SAVE.options). Defaults here; the
+// options screen (below) edits them and applyOptions* wires them into the game.
+const OPTIONS = Object.assign({
+  screenShake: true,    // camera shake on hits / impacts
+  damageNumbers: true,  // floating damage numbers
+  lightIntensity: 1,    // flashlight / darkness brightness (0.6 .. 1.4)
+  reducedMotion: false, // fewer particles, no shake (accessibility / low-end)
+  startWeapon: 'sonar_pulse', // which weapon the vessel launches with
+}, SAVE.options || {});
+// Applied per-run at startGame (gameplay-affecting options). Render-affecting
+// options are read live from OPTIONS where they're used.
+function applyOptionsToRun() {
+  if (G.player && OPTIONS.startWeapon && WEAPONS[OPTIONS.startWeapon]) {
+    G.player.weapons = [{ id: OPTIONS.startWeapon, lvl: 1, cd: 0 }];
+  }
+}
+
+// Small helpers shared by the flow screens.
+function fmtTime(t) {
+  const m = Math.floor(t / 60), s = Math.floor(t % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+const SCREEN_IDS = ['title-screen', 'game-over-screen', 'upgrade-screen', 'artifact-screen', 'stage-clear-screen', 'options-screen'];
+function hideAllScreens() {
+  for (const id of SCREEN_IDS) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  }
+}
+
 function startGame() {
   G.state = 'play';
   G.t = 0;
@@ -3766,26 +4047,28 @@ function startGame() {
   G._lastOfferedKeys = [];
   G.zoneIdx = 0;
   G.zoneFlashT = 1.5;
+  // Carry the active stage's stored best into the in-run display value.
+  G.best = SAVE.best[activeStage().id] || 0;
   G.player = makePlayer();
-  document.getElementById('title-screen').classList.add('hidden');
-  document.getElementById('game-over-screen').classList.add('hidden');
-  document.getElementById('upgrade-screen').classList.add('hidden');
-  const artScreen = document.getElementById('artifact-screen');
-  if (artScreen) artScreen.classList.add('hidden');
+  applyOptionsToRun();
+  hideAllScreens();
   document.getElementById('hud').classList.remove('hidden');
   updateHUD();
+}
+
+// Record a depth result for the active stage, persisting if it's a new best.
+function recordBest(depth) {
+  const id = activeStage().id;
+  if (depth > (SAVE.best[id] || 0)) { SAVE.best[id] = depth; persistSave(); }
+  G.best = SAVE.best[id] || 0;
 }
 
 function gameOver() {
   G.state = 'over';
   const depth = Math.floor(G.t * 12);
-  if (depth > G.best) {
-    G.best = depth;
-  }
+  recordBest(depth);
   document.getElementById('go-depth').textContent = depth + 'M';
-  const mins = Math.floor(G.t / 60);
-  const secs = Math.floor(G.t % 60);
-  document.getElementById('go-time').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+  document.getElementById('go-time').textContent = fmtTime(G.t);
   document.getElementById('go-kills').textContent = G.enemiesKilled;
   document.getElementById('go-best').textContent = G.best + 'M';
   // flavor by zone
@@ -3803,17 +4086,181 @@ function gameOver() {
   }, 600);
 }
 
+// Win: survived the stage's clear time. Bank the result, unlock the next
+// descent, and present the stage-clear screen (continue deeper / surface).
+function stageClear() {
+  G.state = 'cleared';
+  const depth = Math.floor(G.t * 12);
+  recordBest(depth);
+  const st = activeStage();
+  const hasNext = G.stageIdx + 1 < STAGES.length;
+  if (hasNext && SAVE.unlocked < G.stageIdx + 1) {
+    SAVE.unlocked = G.stageIdx + 1;
+    persistSave();
+  }
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('sc-title', 'DESCENT ' + st.numeral + ' COMPLETE');
+  set('sc-flavor', st.clearFlavor || 'The descent holds.');
+  set('sc-depth', depth + 'M');
+  set('sc-time', fmtTime(G.t));
+  set('sc-kills', G.enemiesKilled);
+  const nextBtn = document.getElementById('sc-next-btn');
+  if (nextBtn) {
+    if (hasNext) {
+      nextBtn.classList.remove('hidden');
+      nextBtn.textContent = 'DESCEND TO ' + STAGES[G.stageIdx + 1].name.toUpperCase();
+    } else {
+      nextBtn.classList.add('hidden');
+    }
+  }
+  setTimeout(() => {
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('stage-clear-screen').classList.remove('hidden');
+  }, 600);
+}
+
 function safeStart() {
   try { startGame(); }
   catch (e) {
     if (window.__showErr) window.__showErr('startGame: ' + e.message + '\n' + (e.stack || ''));
   }
 }
-document.getElementById('start-btn').addEventListener('click', safeStart);
+
+// ---- Stage selector (title screen) ----
+function renderStageSelect() {
+  const st = STAGES[G.stageIdx] || STAGES[0];
+  const locked = G.stageIdx > SAVE.unlocked;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('stage-numeral', st.numeral);
+  set('stage-name', st.name);
+  set('stage-flavor', st.flavor);
+  const best = SAVE.best[st.id] || 0;
+  set('stage-best', best ? 'BEST DESCENT · ' + best + 'M' : 'BEST DESCENT · —');
+  set('stage-goal', st.endless ? 'GOAL · SURVIVE · ENDLESS' : 'GOAL · SURVIVE ' + Math.round(st.clearTime / 60) + ' MIN');
+  const lockEl = document.getElementById('stage-locked');
+  if (lockEl) lockEl.classList.toggle('hidden', !locked);
+  const startBtn = document.getElementById('start-btn');
+  if (startBtn) {
+    startBtn.classList.toggle('disabled', locked);
+    startBtn.textContent = locked ? 'SEALED' : 'DESCEND';
+  }
+  const prev = document.getElementById('stage-prev');
+  const next = document.getElementById('stage-next');
+  if (prev) prev.classList.toggle('disabled', G.stageIdx <= 0);
+  if (next) next.classList.toggle('disabled', G.stageIdx >= STAGES.length - 1);
+}
+function selectStage(delta) {
+  G.stageIdx = Math.max(0, Math.min(STAGES.length - 1, G.stageIdx + delta));
+  renderStageSelect();
+}
+
+function descendPressed() {
+  if (G.stageIdx > SAVE.unlocked) return; // locked
+  safeStart();
+}
+
+// ---- Options screen ----
+// Declarative schema: each row is either a toggle or a cycle of values. This
+// keeps adding a new option to a single entry here + reading OPTIONS where it
+// matters. Mirrors the data-driven approach used for weapons/stages.
+function baseWeaponChoices() {
+  return Object.keys(WEAPONS).filter(id => !WEAPONS[id].evolution);
+}
+const OPTION_SCHEMA = [
+  { key: 'screenShake', name: 'Screen Shake', desc: 'Camera kick on impacts.', type: 'toggle' },
+  { key: 'damageNumbers', name: 'Damage Numbers', desc: 'Floating hit values.', type: 'toggle' },
+  { key: 'reducedMotion', name: 'Reduced Motion', desc: 'Fewer particles, no shake.', type: 'toggle' },
+  {
+    key: 'lightIntensity', name: 'Beam Intensity', desc: 'Flashlight / darkness brightness.', type: 'cycle',
+    values: [0.7, 1, 1.3], labels: ['DIM', 'NORMAL', 'BRIGHT'],
+  },
+  {
+    key: 'startWeapon', name: 'Starting System', desc: 'Weapon the vessel launches with.', type: 'cycle',
+    get values() { return baseWeaponChoices(); },
+    label: (v) => (WEAPONS[v] ? WEAPONS[v].name : v).toUpperCase(),
+  },
+];
+function optionControlText(o) {
+  const v = OPTIONS[o.key];
+  if (o.type === 'toggle') return v ? 'ON' : 'OFF';
+  const values = o.values;
+  const idx = Math.max(0, values.indexOf(v));
+  if (o.labels) return o.labels[idx] || String(v);
+  if (o.label) return o.label(values[idx]);
+  return String(v);
+}
+function renderOptions() {
+  const list = document.getElementById('options-list');
+  if (!list) return;
+  list.innerHTML = '';
+  for (const o of OPTION_SCHEMA) {
+    const row = document.createElement('div');
+    row.className = 'opt-row';
+    const isOff = o.type === 'toggle' && !OPTIONS[o.key];
+    row.innerHTML = `
+      <div class="opt-label">
+        <div class="opt-name">${o.name}</div>
+        <div class="opt-desc">${o.desc}</div>
+      </div>
+      <div class="opt-control${isOff ? ' off' : ''}">${optionControlText(o)}</div>`;
+    const ctrl = row.children[1];
+    const cycle = () => {
+      if (o.type === 'toggle') {
+        OPTIONS[o.key] = !OPTIONS[o.key];
+      } else {
+        const values = o.values;
+        const idx = Math.max(0, values.indexOf(OPTIONS[o.key]));
+        OPTIONS[o.key] = values[(idx + 1) % values.length];
+      }
+      SAVE.options = OPTIONS;
+      persistSave();
+      renderOptions();
+    };
+    ctrl.addEventListener('click', cycle);
+    ctrl.addEventListener('touchend', e => { e.preventDefault(); cycle(); }, { passive: false });
+    list.appendChild(row);
+  }
+}
+function openOptions() {
+  renderOptions();
+  document.getElementById('title-screen').classList.add('hidden');
+  document.getElementById('options-screen').classList.remove('hidden');
+}
+function closeOptions() {
+  document.getElementById('options-screen').classList.add('hidden');
+  document.getElementById('title-screen').classList.remove('hidden');
+  renderStageSelect();
+}
+
+document.getElementById('start-btn').addEventListener('click', descendPressed);
 document.getElementById('restart-btn').addEventListener('click', safeStart);
 // Also bind touchend in case click doesn't fire on some mobile setups
-document.getElementById('start-btn').addEventListener('touchend', e => { e.preventDefault(); safeStart(); }, { passive: false });
+document.getElementById('start-btn').addEventListener('touchend', e => { e.preventDefault(); descendPressed(); }, { passive: false });
 document.getElementById('restart-btn').addEventListener('touchend', e => { e.preventDefault(); safeStart(); }, { passive: false });
+
+// Return to the title from any post-run screen.
+function returnToTitle() {
+  G.state = 'title';
+  hideAllScreens();
+  document.getElementById('hud').classList.add('hidden');
+  renderStageSelect();
+  document.getElementById('title-screen').classList.remove('hidden');
+}
+
+function bindTap(id, fn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('click', fn);
+  el.addEventListener('touchend', e => { e.preventDefault(); fn(); }, { passive: false });
+}
+bindTap('stage-prev', () => selectStage(-1));
+bindTap('stage-next', () => selectStage(1));
+bindTap('sc-next-btn', () => { selectStage(1); safeStart(); });
+bindTap('sc-return-btn', returnToTitle);
+bindTap('go-menu-btn', returnToTitle);
+bindTap('options-btn', openOptions);
+bindTap('options-done-btn', closeOptions);
+renderStageSelect();
 
 document.getElementById('pause-btn').addEventListener('click', () => {
   if (G.state === 'play') {
@@ -3856,6 +4303,14 @@ function loop(now) {
     if (G.state === 'play') {
       G.t += dt;
 
+      // Win condition: survive the stage's clear time (no-op on endless stages).
+      safeCall('progress', () => {
+        const st = activeStage();
+        if (!st.endless && G.t >= st.clearTime) stageClear();
+      });
+
+      if (G.state !== 'play') { safeCall('render', () => render()); return; }
+
       safeCall('spawn', () => {
         const newZone = currentZone().idx;
         if (newZone !== G.zoneIdx) {
@@ -3866,8 +4321,9 @@ function loop(now) {
         const { z } = currentZone();
         // Time ramp climbs slowly toward a high ceiling reached around 18-20 min,
         // so the screen-filling crush is a late-game event, not an early wall.
+        // The stage's spawnMult makes deeper descents more crowded from the off.
         const timeRamp = Math.min(4.2, 1 + G.t / 400);
-        G.spawnT += dt * z.spawnRate * timeRamp;
+        G.spawnT += dt * z.spawnRate * timeRamp * activeStage().spawnMult;
         while (G.spawnT > 1) {
           G.spawnT -= 1;
           // burst grows a bit sooner: 2 at ~2.5min, 3 at ~5min, building toward
@@ -3942,7 +4398,7 @@ if (!window.__avDriverInstalled) {
 if (typeof window !== 'undefined' && window.__avExpose) {
   window.__av = {
     G, CAPS, WEAPONS, EVOLUTIONS, ARTIFACTS, PASSIVES, ENEMIES, ZONES,
-    startGame, makePlayer,
+    STAGES, SAVE, OPTIONS, startGame, makePlayer, stageClear, activeStage, damagePlayer,
   };
 }
 

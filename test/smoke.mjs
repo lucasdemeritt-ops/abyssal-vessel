@@ -31,18 +31,23 @@ const errors = [];
 env.win.__showErr = (m) => errors.push(m);
 
 ok(!!env.av, 'game exposed internals via __avExpose seam');
-const { G, CAPS } = env.av;
+const { G, CAPS, STAGES, SAVE } = env.av;
+
+// --- Stage registry present -----------------------------------------------
+ok(Array.isArray(STAGES) && STAGES.length >= 2, `stage registry present (${STAGES.length} stages)`);
+ok(STAGES.every(s => s.id && s.numeral && typeof s.difficulty === 'number'), 'every stage has id/numeral/difficulty');
 
 // --- Title screen renders without input -----------------------------------
 for (let i = 0; i < 10; i++) env.frame();
 ok(env.state === 'title', "starts on the title screen");
 
-// --- Start a run ----------------------------------------------------------
+// --- Start a run (stage I) ------------------------------------------------
+G.stageIdx = 0;
 env.av.startGame();
 env.frame();
 ok(env.state === 'play', "DESCEND puts the game into 'play'");
 
-// --- Drive ~10 minutes, forcing level-ups and capturing caps --------------
+// --- Drive until the stage clears, forcing level-ups and capturing caps ---
 const peak = {};
 const track = ['enemies', 'projectiles', 'enemyProjectiles', 'particles',
   'pickups', 'effects', 'spires', 'voids', 'bursts', 'mines'];
@@ -51,22 +56,20 @@ function recordCaps() {
 }
 
 let levelups = 0;
-const FRAMES = 6000; // 6000 * 0.1s clamp = ~600s of game time
-for (let i = 0; i < FRAMES; i++) {
-  // Use a big dt so the loop's 0.1s clamp advances game time fast.
-  env.frame(120);
+const MAX_FRAMES = 9000; // generous: clearTime is 600s, frames advance ~0.1s each
+for (let i = 0; i < MAX_FRAMES; i++) {
+  // Keep the (stationary) test pilot alive so we deterministically reach the
+  // clear time — we're exercising the engine/caps/clear flow, not survival.
+  if (G.state === 'play' && G.player) { G.player.hp = G.player.maxHp = 1e9; G.player.invuln = 1; }
+  env.frame(120); // big dt -> loop clamps to 0.1s, advancing game time fast
   recordCaps();
-
-  // Periodically hand the player enough XP to level, then take an upgrade.
-  if (G.state === 'play' && i % 60 === 0 && G.player) {
-    G.player.xp = G.player.xpToNext;
-  }
+  if (G.state === 'play' && i % 60 === 0 && G.player) G.player.xp = G.player.xpToNext;
   if (G.state === 'levelup') {
     const cards = env.getEl('upgrade-cards').children;
     if (cards.length) { cards[0]._fire('click'); levelups++; }
     env.frame();
   }
-  if (G.state === 'over') break;
+  if (G.state === 'over' || G.state === 'cleared') break;
 }
 
 ok(levelups > 0, `leveled up and picked upgrades (${levelups}x)`);
@@ -79,11 +82,18 @@ for (const k of track) {
 ok(capsOk, 'every entity array stayed under its hard cap');
 console.log('    peak counts:', track.map(k => `${k}=${peak[k]}/${CAPS[k]}`).join('  '));
 
-// --- Player can die -> game over ------------------------------------------
-if (G.state !== 'over') {
-  if (G.player) { G.player.hp = -999; G.player.invuln = 0; G.player.shieldReady = false; }
-  for (let i = 0; i < 200 && G.state !== 'over'; i++) env.frame(120);
-}
+// --- Surviving the clear time clears the stage and unlocks the next --------
+ok(env.state === 'cleared', "survived clear time -> 'cleared'");
+ok(SAVE.unlocked >= 1, 'clearing stage I unlocked stage II');
+ok((SAVE.best['first_descent'] || 0) > 0, 'per-stage best recorded for stage I');
+
+// --- Player can die -> game over (fresh run) ------------------------------
+G.stageIdx = 0;
+env.av.startGame();
+env.frame();
+ok(env.state === 'play', 'fresh run starts back in play');
+if (G.player) { G.player.invuln = 0; G.player.shieldMax = 0; G.player.shieldReady = false; }
+env.av.damagePlayer(1e9);
 ok(env.state === 'over', 'reaches the game-over screen on death');
 
 console.log(failures ? `\nSMOKE FAILED (${failures})` : '\nSMOKE PASSED');
