@@ -221,12 +221,18 @@ This project was built **without** a normal toolchain, so there's a manual but r
 
 Working well: the early game pace, the chest/artifact loop, weapon maxing at L4, the skip-to-bank option, evolutions being reachable, performance/stability.
 
-> **v4.0 balance is unplaytested.** The stage difficulty curve (`difficulty`/`spawnMult`/`hpRamp`/`dmgRamp` per stage in `STAGES`) was set by reasoning, not play. Expect to tune it: the step between stages, and whether stage IV (endless) stays survivable long enough to feel like the payoff. All knobs are in the `STAGES` table.
+> **v4.2 — mathematical balance pass.** Every base weapon and evolution was rescaled against a transparent power model (`test/balance.mjs`, runnable: `node test/balance.mjs`). The model scores each weapon's sustained output on two axes — **ST** (one focused target) and **AREA** (a radius-scaled cluster) — blended 50/50 into a composite, with persistent entities (spires/voids/orbiters/drones/clouds) scored at realistic uptime. Two goals:
+> - **Base weapons:** rescale per-level `dmg` so all land in a tight band (composite spread cut from ~9.5× to ~1.5×), centered on the *existing* median so overall difficulty is unchanged — power was redistributed, not deflated. Control/utility weapons (voidwater, ink, parasite) intentionally sit a little lower since they bring slow/pull/homing. Cadence/count/radius were left alone, so each weapon keeps its feel.
+> - **Evolutions:** retuned to **85–98% of their two parents combined** (owner's rule: as strong as both, a little under, since they're more screen-prevalent). The over-tuned *multiplier* stat was cut (Arc Furnace 18→8 chains, Black Reef 5→3 spires / 0.2→0.4s lash, Halo 12→8 shards, Swarm Fleet 6→4 drones, Minefield 130→55 blast) rather than gutting per-hit damage; the weak ones were buffed (Refraction Lattice, Resonance Collapse, Calling Depth).
+>
+> **This is model-driven, not playtested** — the model approximates (especially radius-AoE vs. stacked-persistent archetypes). Treat it as a strong first draft; adjust per-level `dmg` from real play and re-run `balance.mjs` to see where things land. Because all changes were to the data tables, retuning is cheap.
 
-Recent balance work has been an ongoing "tame the overpowered evolutions" pass:
+Earlier balance work (still relevant context):
 - **Resonance Collapse** (v3.2): reworked from an instant 6-implosion carpet every 1.3s to a **sequential cascade** — smaller wave + 4 staggered implosions (~0.18s apart) on a 3.2s cooldown.
 - **Voidwater / Calling Depth** (v3.1): base Voidwater is now **drifting cyclones** that emanate from the sub with a gentle, **escapable** pull (quadratic falloff — only the dead center grips; enemies at the rim break free). Calling Depth (the evolution) is now many **small, fast-decaying** vortexes scattered across the field, not a few huge permanent ones. This killed an invincibility exploit (sitting in the intersection of permanent voids).
 - Power Reactor reduced to +12% × max 4 to curb multiplicative damage stacking.
+
+> **v4.0 stage curve is still unplaytested** — the per-stage `difficulty`/`spawnMult`/`hpRamp`/`dmgRamp` in `STAGES` were set by reasoning. Note the v4.2 rescale capped optimized builds (top weapons were pulled down from ~250 to ~140 composite), so late game may feel a touch harder for min-maxers; tune the `STAGES` knobs if so.
 
 **Design principle the owner cares about:** screen-wiping should be the payoff of a **whole stacked build at 15–20 min**, not a single evolution you rush. Rushing one combo *should* feel briefly overpowered as a reward, but enemies should eventually out-scale it.
 

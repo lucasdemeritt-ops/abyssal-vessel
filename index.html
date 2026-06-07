@@ -458,7 +458,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v4.1</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v4.2</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -603,7 +603,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v4.1'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v4.2'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -773,10 +773,10 @@ const WEAPONS = {
     baseCD: 1.6,
     maxLevel: 4,
     levels: [
-      { dmg: 11, radius: 150, knock: 85, bursts: 1, cdMult: 1.0 },
-      { dmg: 16, radius: 175, knock: 100, bursts: 1, cdMult: 0.94 },
-      { dmg: 21, radius: 200, knock: 115, bursts: 1, cdMult: 0.89 },
-      { dmg: 28, radius: 235, knock: 130, bursts: 1, cdMult: 0.84 },
+      { dmg: 15, radius: 150, knock: 85, bursts: 1, cdMult: 1.0 },
+      { dmg: 22, radius: 175, knock: 100, bursts: 1, cdMult: 0.94 },
+      { dmg: 29, radius: 200, knock: 115, bursts: 1, cdMult: 0.89 },
+      { dmg: 39, radius: 235, knock: 130, bursts: 1, cdMult: 0.84 },
     ],
     levelDesc: lvl => [
       `Base wave. ${lvl.dmg} damage, ${lvl.radius}u radius.`,
@@ -875,10 +875,10 @@ const WEAPONS = {
     baseCD: 1.4,
     maxLevel: 4,
     levels: [
-      { dmg: 11, chains: 3, range: 200 },
-      { dmg: 15, chains: 4, range: 230 },
-      { dmg: 19, chains: 5, range: 255 },
-      { dmg: 24, chains: 7, range: 280 },
+      { dmg: 20, chains: 3, range: 200 },
+      { dmg: 27, chains: 4, range: 230 },
+      { dmg: 34, chains: 5, range: 255 },
+      { dmg: 43, chains: 7, range: 280 },
     ],
     levelDesc: lvl => [
       `Jumps to ${lvl.chains} targets. ${lvl.dmg} damage each.`,
@@ -925,10 +925,10 @@ const WEAPONS = {
     baseCD: 1.8,
     maxLevel: 4,
     levels: [
-      { dmg: 7, count: 4, speed: 240 },
-      { dmg: 9, count: 6, speed: 265 },
-      { dmg: 12, count: 9, speed: 290 },
-      { dmg: 16, count: 12, speed: 320 },
+      { dmg: 13, count: 4, speed: 240 },
+      { dmg: 16, count: 6, speed: 265 },
+      { dmg: 22, count: 9, speed: 290 },
+      { dmg: 29, count: 12, speed: 320 },
     ],
     levelDesc: lvl => [
       `Release ${lvl.count} homing parasites.`,
@@ -970,10 +970,10 @@ const WEAPONS = {
     baseCD: 4.0,
     maxLevel: 4,
     levels: [
-      { dmg: 10, count: 1, dur: 10, range: 150, fireCD: 0.55 },
-      { dmg: 13, count: 2, dur: 11, range: 160, fireCD: 0.5 },
-      { dmg: 17, count: 2, dur: 12, range: 175, fireCD: 0.45 },
-      { dmg: 22, count: 3, dur: 14, range: 190, fireCD: 0.4 },
+      { dmg: 7, count: 1, dur: 10, range: 150, fireCD: 0.55 },
+      { dmg: 9, count: 2, dur: 11, range: 160, fireCD: 0.5 },
+      { dmg: 12, count: 2, dur: 12, range: 175, fireCD: 0.45 },
+      { dmg: 16, count: 3, dur: 14, range: 190, fireCD: 0.4 },
     ],
     levelDesc: lvl => [
       `Plant a spire. Lashes for ${lvl.dur}s.`,
@@ -1009,10 +1009,10 @@ const WEAPONS = {
     baseCD: 4.5,
     maxLevel: 4,
     levels: [
-      { dmg: 5, dur: 5, pullR: 150, dmgR: 60, count: 1, drift: 70 },
-      { dmg: 7, dur: 5.5, pullR: 170, dmgR: 70, count: 1, drift: 70 },
-      { dmg: 9, dur: 6, pullR: 190, dmgR: 80, count: 2, drift: 65 },
-      { dmg: 12, dur: 6.5, pullR: 215, dmgR: 92, count: 2, drift: 65 },
+      { dmg: 8, dur: 5, pullR: 150, dmgR: 60, count: 1, drift: 70 },
+      { dmg: 11, dur: 5.5, pullR: 170, dmgR: 70, count: 1, drift: 70 },
+      { dmg: 14, dur: 6, pullR: 190, dmgR: 80, count: 2, drift: 65 },
+      { dmg: 18, dur: 6.5, pullR: 215, dmgR: 92, count: 2, drift: 65 },
     ],
     levelDesc: lvl => [
       `A cyclone drifts out for ${lvl.dur}s.`,
@@ -1051,10 +1051,10 @@ const WEAPONS = {
     baseCD: 1.1,
     maxLevel: 4,
     levels: [
-      { dmg: 16, count: 2, speed: 380, pierce: 1 },
-      { dmg: 20, count: 3, speed: 400, pierce: 2 },
-      { dmg: 26, count: 4, speed: 430, pierce: 2 },
-      { dmg: 34, count: 5, speed: 460, pierce: 3 },
+      { dmg: 11, count: 2, speed: 380, pierce: 1 },
+      { dmg: 14, count: 3, speed: 400, pierce: 2 },
+      { dmg: 18, count: 4, speed: 430, pierce: 2 },
+      { dmg: 24, count: 5, speed: 460, pierce: 3 },
     ],
     levelDesc: lvl => [
       `Fires ${lvl.count} torpedo.`,
@@ -1099,10 +1099,10 @@ const WEAPONS = {
     baseCD: 2.2,
     maxLevel: 4,
     levels: [
-      { dmg: 6, radius: 125, ticks: 5, tickRate: 0.14 },
-      { dmg: 8, radius: 145, ticks: 6, tickRate: 0.13 },
-      { dmg: 11, radius: 162, ticks: 7, tickRate: 0.12 },
-      { dmg: 14, radius: 180, ticks: 9, tickRate: 0.11 },
+      { dmg: 4, radius: 125, ticks: 5, tickRate: 0.14 },
+      { dmg: 6, radius: 145, ticks: 6, tickRate: 0.13 },
+      { dmg: 8, radius: 162, ticks: 7, tickRate: 0.12 },
+      { dmg: 10, radius: 180, ticks: 9, tickRate: 0.11 },
     ],
     levelDesc: lvl => [
       `Steam burst, ${lvl.ticks} ticks.`,
@@ -1136,10 +1136,10 @@ const WEAPONS = {
     baseCD: 0.5, // short — used to reconcile orbiter count/state
     maxLevel: 4,
     levels: [
-      { dmg: 8, count: 3, radius: 75, speed: 2.4 },
-      { dmg: 11, count: 4, radius: 82, speed: 2.6 },
-      { dmg: 14, count: 5, radius: 90, speed: 2.85 },
-      { dmg: 18, count: 6, radius: 100, speed: 3.1 },
+      { dmg: 10, count: 3, radius: 75, speed: 2.4 },
+      { dmg: 13, count: 4, radius: 82, speed: 2.6 },
+      { dmg: 17, count: 5, radius: 90, speed: 2.85 },
+      { dmg: 22, count: 6, radius: 100, speed: 3.1 },
     ],
     levelDesc: () => [
       `2 orbiting shards.`,
@@ -1225,10 +1225,10 @@ const WEAPONS = {
     baseCD: 2.0,
     maxLevel: 4,
     levels: [
-      { dmg: 38, radius: 100, count: 1, trigger: 42 },
-      { dmg: 50, radius: 112, count: 2, trigger: 44 },
-      { dmg: 63, radius: 128, count: 2, trigger: 47 },
-      { dmg: 78, radius: 145, count: 3, trigger: 50 },
+      { dmg: 21, radius: 100, count: 1, trigger: 42 },
+      { dmg: 28, radius: 112, count: 2, trigger: 44 },
+      { dmg: 35, radius: 128, count: 2, trigger: 47 },
+      { dmg: 43, radius: 145, count: 3, trigger: 50 },
     ],
     levelDesc: lvl => [
       `Drop a mine. ${lvl.dmg} blast damage.`,
@@ -1263,10 +1263,10 @@ const WEAPONS = {
     baseCD: 1.5,
     maxLevel: 4,
     levels: [
-      { dmg: 24, range: 520, width: 22, beams: 1 },
-      { dmg: 30, range: 560, width: 24, beams: 1 },
-      { dmg: 38, range: 600, width: 26, beams: 2 },
-      { dmg: 48, range: 660, width: 30, beams: 2 },
+      { dmg: 19, range: 520, width: 22, beams: 1 },
+      { dmg: 24, range: 560, width: 24, beams: 1 },
+      { dmg: 30, range: 600, width: 26, beams: 2 },
+      { dmg: 38, range: 660, width: 30, beams: 2 },
     ],
     levelDesc: lvl => [
       `Pierces everything in a line for ${lvl.dmg}.`,
@@ -1335,7 +1335,7 @@ const WEAPONS = {
     baseCD: 3.2,
     maxLevel: 1,
     levels: [
-      { dmg: 42, radius: 200, knock: 150, implosionDmg: 38, implosionR: 70, implosions: 4, stagger: 0.18 },
+      { dmg: 69, radius: 200, knock: 150, implosionDmg: 63, implosionR: 70, implosions: 4, stagger: 0.18 },
     ],
     levelDesc: () => ['Shockwave into a cascade of implosions.'],
     fire(w, p) {
@@ -1383,7 +1383,7 @@ const WEAPONS = {
     desc: 'Superheated lightning forks endlessly, igniting all it touches.',
     baseCD: 0.85,
     maxLevel: 1,
-    levels: [{ dmg: 65, chains: 18, range: 360, igniteDmg: 14, igniteDur: 3 }],
+    levels: [{ dmg: 44, chains: 8, range: 360, igniteDmg: 9, igniteDur: 3 }],
     levelDesc: () => ['Burns. Chains. Stacks.'],
     fire(w, p) {
       const s = this.levels[0];
@@ -1420,7 +1420,7 @@ const WEAPONS = {
     desc: 'A relentless swarm; every kill hatches more infected drones.',
     baseCD: 1.3,
     maxLevel: 1,
-    levels: [{ dmg: 34, count: 16, speed: 360, hatchChance: 0.5, hatchDmg: 26 }],
+    levels: [{ dmg: 33, count: 16, speed: 360, hatchChance: 0.5, hatchDmg: 26 }],
     levelDesc: () => ['Swarm that begets swarm.'],
     fire(w, p) {
       const s = this.levels[0];
@@ -1451,7 +1451,7 @@ const WEAPONS = {
     desc: 'Eldritch coral overtakes the seabed, dragging in and flaying all.',
     baseCD: 2.6,
     maxLevel: 1,
-    levels: [{ dmg: 40, dur: 20, count: 5, range: 230, fireCD: 0.2, pullStrength: 120 }],
+    levels: [{ dmg: 25, dur: 14, count: 3, range: 230, fireCD: 0.4, pullStrength: 120 }],
     levelDesc: () => ['Living abyssal coral.'],
     fire(w, p) {
       const s = this.levels[0];
@@ -1484,7 +1484,7 @@ const WEAPONS = {
     desc: 'The abyss blooms — short-lived vortexes tear open across the field.',
     baseCD: 2.2,
     maxLevel: 1,
-    levels: [{ dmg: 30, dur: 2.4, pullR: 150, dmgR: 78, count: 4 }],
+    levels: [{ dmg: 42, dur: 2.4, pullR: 150, dmgR: 78, count: 4 }],
     levelDesc: () => ['A bloom of collapsing vortexes.'],
     fire(w, p) {
       const s = this.levels[0];
@@ -1520,7 +1520,7 @@ const WEAPONS = {
     desc: 'A dense, fast double-ring of shards becomes an impenetrable wall.',
     baseCD: 0.5,
     maxLevel: 1,
-    levels: [{ dmg: 40, count: 12, radius: 95, speed: 4.0 }],
+    levels: [{ dmg: 30, count: 8, radius: 95, speed: 4.0 }],
     levelDesc: () => ['Twelve shards, twin rings, lethal contact.'],
     fire(w, p) {
       const s = this.levels[0];
@@ -1545,7 +1545,7 @@ const WEAPONS = {
     desc: 'A full fleet of rapid-fire sentries surrounds and overwhelms.',
     baseCD: 0.5,
     maxLevel: 1,
-    levels: [{ dmg: 38, count: 6, range: 400, fireRate: 0.28, projSpeed: 520 }],
+    levels: [{ dmg: 30, count: 4, range: 400, fireRate: 0.4, projSpeed: 520 }],
     levelDesc: () => ['Six sentries, relentless fire.'],
     fire(w, p) {
       const s = this.levels[0];
@@ -1570,7 +1570,7 @@ const WEAPONS = {
     desc: 'Saturates the area with massive chain-detonating mines.',
     baseCD: 1.4,
     maxLevel: 1,
-    levels: [{ dmg: 130, radius: 175, count: 4, trigger: 60 }],
+    levels: [{ dmg: 55, radius: 175, count: 4, trigger: 60 }],
     levelDesc: () => ['Carpet the seabed in devastation.'],
     fire(w, p) {
       const s = this.levels[0];
@@ -1597,7 +1597,7 @@ const WEAPONS = {
     desc: 'Light fractures into a radial lattice of lances that sweeps the field.',
     baseCD: 2.6,
     maxLevel: 1,
-    levels: [{ dmg: 40, range: 540, width: 28, beams: 9 }],
+    levels: [{ dmg: 82, range: 540, width: 28, beams: 9 }],
     levelDesc: () => ['A turning starburst of piercing light.'],
     fire(w, p) {
       const s = this.levels[0];
@@ -1621,7 +1621,7 @@ const WEAPONS = {
     desc: 'A vast, crushing dark that drags everything in and dissolves it.',
     baseCD: 4.0,
     maxLevel: 1,
-    levels: [{ dmg: 14, radius: 200, dur: 6.0, tickRate: 0.30, slow: 0.35 }],
+    levels: [{ dmg: 15, radius: 200, dur: 6.0, tickRate: 0.30, slow: 0.35 }],
     levelDesc: () => ['An enveloping cloud that slows, pulls, and corrodes.'],
     fire(w, p) {
       const s = this.levels[0];
