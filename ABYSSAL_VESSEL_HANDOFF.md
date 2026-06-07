@@ -69,7 +69,7 @@ Stress tested: fully-maxed loadout, screen-filling swarm, ~250µs–1.2ms median
 Floating joystick: touch anywhere becomes the anchor, drag to steer (so the thumb isn't over the action). Mouse works too (for desktop testing).
 
 ### Weapons — "schools" and levels
-11 base weapons, each belonging to a **school**. Each has a `levels` array and `fire(w, p)`. **All base weapons max at level 4** (`maxLevel: 4`) — this was a deliberate rework so the power ceiling (old L5) is reached in 3 upgrades, making evolutions attainable. `fire` reads `this.levels[w.lvl - 1]`.
+13 base weapons, each belonging to a **school**. Each has a `levels` array and `fire(w, p)`. **All base weapons max at level 4** (`maxLevel: 4`) — this was a deliberate rework so the power ceiling (old L5) is reached in 3 upgrades, making evolutions attainable. `fire` reads `this.levels[w.lvl - 1]`.
 
 | id | name | school |
 |---|---|---|
@@ -84,8 +84,14 @@ Floating joystick: touch anywhere becomes the anchor, drag to steer (so the thum
 | orbital_ring | Orbital Ring | orbital |
 | drone_gun | Sentry Drone | drone |
 | prox_mine | Proximity Mine | mine |
+| photophore_lance | Photophore Lance | beam |
+| ink_plume | Ink Plume | ink |
 
-Some weapons maintain **persistent entities** rather than firing one-shot projectiles: `orbital_ring`→`G.orbiters` (shards circling the player, kept perfectly equidistant via shared phase + index), `drone_gun`→`G.drones` (autonomous turrets), `prox_mine`→`G.mines`, `voidwater_orb`→`G.voids` (drifting cyclones). Their `fire` reconciles entity count to match weapon level.
+Some weapons maintain **persistent entities** rather than firing one-shot projectiles: `orbital_ring`→`G.orbiters` (shards circling the player, kept perfectly equidistant via shared phase + index), `drone_gun`→`G.drones` (autonomous turrets, **also equidistant** via index+phase as of v4.0), `prox_mine`→`G.mines`, `voidwater_orb`→`G.voids` (drifting cyclones). Their `fire` reconciles entity count to match weapon level.
+
+**Two newer mechanics (v4.1):**
+- **`photophore_lance` (beam):** a *hitscan* lance. `castBeam(x,y,dir,range,halfW,dmg,color)` damages every enemy in a straight corridor (grid query around the segment midpoint + perpendicular-distance test), pierces all, and pushes a short visual `beam` effect. Reuse `castBeam` for any future beam weapon.
+- **`ink_plume` (ink):** a lingering cloud (`effect type 'ink'`, mirrors `thermal`) that ticks damage AND **slows** enemies — it sets `e.slowT`/`e.slowMul`, honored in `updateEnemies` (scales the enemy's own locomotion, not external pull). First control/debuff archetype; reuse the slow fields for future control weapons.
 
 Weapons read **artifact bonuses** from `p.bonus` (see below) and per-school damage via `schoolMult(p, school)`.
 
@@ -94,7 +100,7 @@ Max two specific weapons (both at L4) and the next level-up offers a gold **EVOL
 
 **The model is 1:1:** each unordered weapon pair maps to exactly one evolution, and each evolution has exactly one pair. (The old dual-path recipes — `orbital+coral` *or* `orbital+bioelectric` → Halo, etc. — were removed in v4.0 as arbitrary.) A weapon may still appear in several recipes with *different* partners, so it can have more than one distinct evolution. `validateContent()` rejects any duplicate pair or duplicate target, so a future recipe can't reintroduce the ambiguity.
 
-8 evolutions, 8 recipes:
+10 evolutions, 10 recipes:
 
 | evolution | recipe |
 |---|---|
@@ -106,6 +112,8 @@ Max two specific weapons (both at L4) and the next level-up offers a gold **EVOL
 | halo_array (Halo Array) | orbital + coral |
 | swarm_fleet (Drone Fleet) | drone + torpedo |
 | abyssal_minefield (Abyssal Minefield) | mine + thermal |
+| refraction_lattice (Refraction Lattice) | photophore_lance + sonar |
+| drowning_dark (The Drowning Dark) | ink_plume + voidwater |
 
 `getEvolution()` returns the first recipe whose two `from` weapons are both at `maxLevel` and whose `to` isn't already owned. `buildUpgradePool()` always includes an available evolution; `presentUpgrades()` always surfaces it (never lost in the random mix). Evolution apply removes **all** weapons in `from` (the old `replaces` field is gone).
 
@@ -113,13 +121,13 @@ Max two specific weapons (both at L4) and the next level-up offers a gold **EVOL
 
 > **Design note (owner, v4.0):** the chosen direction is **deterministic 1:1** for now. A *choice-based* model (a combo unlocks a pick among several evolution directions, Magic-Survival style) was considered and deferred — the system is centralized in `getEvolution()`/`presentUpgrades()`, so it can be revisited without touching weapon code.
 
-### Artifacts (18) — limited slots, found in chests
+### Artifacts (20) — limited slots, found in chests
 Rare. A treasure chest spawns roughly every ~38s (one at a time, after 25s), with an off-screen gold direction arrow when off-screen. Walking into it pauses the game (`state='artifact'`) and offers a **choice of 2** (plus "leave it" → heal 30). You have **4 slots** (`ARTIFACT_SLOTS`). When full, picking a new one opens a swap screen (replace one, or keep your loadout). Artifacts apply/remove reversibly (must be — slots are swappable). They write into `p.bonus`:
 
 `projCount, projSpeed, projSize, pierce, orbCount, droneCount, sonarBursts, school{}` (per-school damage multipliers).
 
 Artifact list (offense / defense / new-weapon / utility):
-`munitions` (+1 projectile), `overclock` (proj speed), `swell` (proj size), `piercer` (+2 pierce), `capacitor` (sonar+bioelectric dmg), `bloom` (parasite+mechanical dmg), `reactor_relic`/Leviathan Heart (all dmg +25%, +40 hull), `ballast_relic`/Current Rider (speed + cdr), `aegis`/Aegis Membrane (absorb one hit, recharges), `carapace` (+60 hull + regen), `phase`/Phase Cloak (longer invuln), `gyroscope` (orbital dmg), `uplink` (drone dmg), `detonator` (mine dmg+size), `extra_shard`/Fractured Prism (+2 shards), `extra_drone`/Drone Bay (+1 drone), `resonator_relic`/Echo Chamber (+1 sonar wave), `retaliate_relic`/Counterstrike Core (screen-wide blast when hit, 6s cd).
+`munitions` (+1 projectile), `overclock` (proj speed), `swell` (proj size), `piercer` (+2 pierce), `capacitor` (sonar+bioelectric dmg), `bloom` (parasite+mechanical dmg), `reactor_relic`/Leviathan Heart (all dmg +25%, +40 hull), `ballast_relic`/Current Rider (speed + cdr), `aegis`/Aegis Membrane (absorb one hit, recharges), `carapace` (+60 hull + regen), `phase`/Phase Cloak (longer invuln), `gyroscope` (orbital dmg), `uplink` (drone dmg), `detonator` (mine dmg+size), `extra_shard`/Fractured Prism (+2 shards), `extra_drone`/Drone Bay (+1 drone), `resonator_relic`/Echo Chamber (+1 sonar wave), `retaliate_relic`/Counterstrike Core (screen-wide blast when hit, 6s cd), `prism_lens`/Photonic Lens (beam dmg +35%), `ink_gland`/Cephalopod Gland (ink dmg +30%).
 
 ### Passives (8) — ordinary upgrade-screen picks
 `hull` (+25 max), `ballast` (+12% speed), `reactor` (+12% all dmg, max 4), `cooling` (−10% cd), `sensors` (+40% pickup range), `resonator` (+15% AoE), `glow` (+20% light), `regen` (+0.5 hp/s).

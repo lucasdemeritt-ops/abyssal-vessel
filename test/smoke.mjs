@@ -64,8 +64,27 @@ ok(env.state === 'play', "DESCEND puts the game into 'play'");
   G.player.weapons = r.from.map(id => ({ id, lvl: env.av.WEAPONS[id].maxLevel, cd: 0 }));
   const offered = env.av.getEvolution();
   ok(offered && offered.to === r.to, `maxed ${r.from.join('+')} offers ${r.to}`);
-  G.player.weapons = [{ id: 'sonar_pulse', lvl: 1, cd: 0 }]; // restore for the drive
 }
+
+// New content batch: weapons fire without error, evolutions resolve.
+{
+  const WEP = env.av.WEAPONS;
+  ok(WEP.photophore_lance && WEP.ink_plume, 'new base weapons registered (beam, ink)');
+  const before = G.effects.length;
+  WEP.photophore_lance.fire({ id: 'photophore_lance', lvl: 4, cd: 0 }, G.player);
+  WEP.ink_plume.fire({ id: 'ink_plume', lvl: 4, cd: 0 }, G.player);
+  ok(G.effects.length > before, 'new weapons fire and emit effects');
+  for (const [a, b, to] of [
+    ['photophore_lance', 'sonar_pulse', 'refraction_lattice'],
+    ['ink_plume', 'voidwater_orb', 'drowning_dark'],
+  ]) {
+    G.player.weapons = [{ id: a, lvl: WEP[a].maxLevel, cd: 0 }, { id: b, lvl: WEP[b].maxLevel, cd: 0 }];
+    const ev = env.av.getEvolution();
+    ok(ev && ev.to === to, `${a}+${b} offers ${to}`);
+  }
+}
+// Clean restart so the drive loop below begins from a fresh run.
+G.stageIdx = 0; env.av.startGame(); env.frame();
 
 // --- Drive until the stage clears, forcing level-ups and capturing caps ---
 const peak = {};

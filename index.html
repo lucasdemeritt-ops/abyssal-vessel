@@ -458,7 +458,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v4.0</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v4.1</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -603,7 +603,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v4.0'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v4.1'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -751,12 +751,16 @@ const SCHOOLS = {
   orbital:    { name: 'Orbital',     color: '#7be8ff' },
   drone:      { name: 'Drone',       color: '#ffe066' },
   mine:       { name: 'Demolition',  color: '#ff7a3c' },
+  beam:       { name: 'Photophore',  color: '#9fe8ff' },
+  ink:        { name: 'Ink',         color: '#9a7ae0' },
   // evolved
   resonance:  { name: 'Resonance',   color: '#ff5bdf' },
   arc:        { name: 'Arc Furnace', color: '#ff8030' },
   hive:       { name: 'Drone Hive',  color: '#ffafff' },
   reef:       { name: 'Black Reef',  color: '#7340ff' },
   calling:    { name: 'The Calling', color: '#ff5bdf' },
+  refraction: { name: 'Refraction',  color: '#cfeaff' },
+  drowning:   { name: 'The Drowning',color: '#6a46c0' },
 };
 
 const WEAPONS = {
@@ -1250,6 +1254,75 @@ const WEAPONS = {
     }
   },
 
+  photophore_lance: {
+    id: 'photophore_lance',
+    name: 'Photophore Lance',
+    school: 'beam',
+    icon: '✦',
+    desc: 'A lance of focused biolight spears everything in a straight line.',
+    baseCD: 1.5,
+    maxLevel: 4,
+    levels: [
+      { dmg: 24, range: 520, width: 22, beams: 1 },
+      { dmg: 30, range: 560, width: 24, beams: 1 },
+      { dmg: 38, range: 600, width: 26, beams: 2 },
+      { dmg: 48, range: 660, width: 30, beams: 2 },
+    ],
+    levelDesc: lvl => [
+      `Pierces everything in a line for ${lvl.dmg}.`,
+      `Longer, brighter lance.`,
+      `Fires ${lvl.beams} lances at the nearest threats.`,
+      `${lvl.beams} long-range lances.`,
+    ],
+    fire(w, p) {
+      const s = this.levels[w.lvl - 1];
+      const dmg = s.dmg * p.stats.damage * schoolMult(p, 'beam');
+      const halfW = s.width * 0.5 * p.bonus.projSize;
+      const used = new Set();
+      for (let b = 0; b < s.beams; b++) {
+        const tgt = nearestEnemy(p, s.range, used);
+        let dir;
+        if (tgt) { used.add(tgt.id); dir = angle(p, tgt); }
+        else dir = p.lastMoveAngle + b * 0.5;
+        castBeam(p.x, p.y, dir, s.range, halfW, dmg, '#9fe8ff');
+      }
+    }
+  },
+
+  ink_plume: {
+    id: 'ink_plume',
+    name: 'Ink Plume',
+    school: 'ink',
+    icon: '≋',
+    desc: 'Vents a cloud of stinging ink that corrodes and bogs down anything inside.',
+    baseCD: 2.6,
+    maxLevel: 4,
+    levels: [
+      { dmg: 5, radius: 95, dur: 3.5, tickRate: 0.40, slow: 0.60 },
+      { dmg: 7, radius: 110, dur: 4.0, tickRate: 0.38, slow: 0.55 },
+      { dmg: 9, radius: 128, dur: 4.5, tickRate: 0.35, slow: 0.50 },
+      { dmg: 12, radius: 148, dur: 5.0, tickRate: 0.32, slow: 0.45 },
+    ],
+    levelDesc: lvl => [
+      `Cloud: ${lvl.dmg}/tick, slows enemies inside.`,
+      `Larger, longer cloud.`,
+      `Wider cloud, stronger slow.`,
+      `Enveloping plume.`,
+    ],
+    fire(w, p) {
+      const s = this.levels[w.lvl - 1];
+      const dmg = s.dmg * p.stats.damage * schoolMult(p, 'ink');
+      pushEffect({
+        type: 'ink', x: p.x, y: p.y,
+        radius: s.radius * p.stats.area * p.bonus.projSize,
+        dmg, tickRate: s.tickRate, tickT: 0,
+        slowMul: s.slow, life: s.dur, age: 0,
+        color: '#9a7ae0', drift: true,
+        vx: rand(-12, 12), vy: rand(-12, 12),
+      });
+    }
+  },
+
   // ====================== EVOLUTIONS ======================
 
   resonance_collapse: {
@@ -1514,6 +1587,63 @@ const WEAPONS = {
       }
     }
   },
+
+  refraction_lattice: {
+    id: 'refraction_lattice',
+    name: 'Refraction Lattice',
+    school: 'refraction',
+    icon: '❋',
+    evolution: true,
+    desc: 'Light fractures into a radial lattice of lances that sweeps the field.',
+    baseCD: 2.6,
+    maxLevel: 1,
+    levels: [{ dmg: 40, range: 540, width: 28, beams: 9 }],
+    levelDesc: () => ['A turning starburst of piercing light.'],
+    fire(w, p) {
+      const s = this.levels[0];
+      const mult = schoolMult(p, 'beam') * schoolMult(p, 'sonar');
+      const dmg = s.dmg * p.stats.damage * mult;
+      const halfW = s.width * 0.5 * p.bonus.projSize;
+      const base = G.t * 0.6; // slow rotation between casts
+      for (let i = 0; i < s.beams; i++) {
+        const dir = base + (i / s.beams) * Math.PI * 2;
+        castBeam(p.x, p.y, dir, s.range, halfW, dmg, '#cfeaff');
+      }
+    }
+  },
+
+  drowning_dark: {
+    id: 'drowning_dark',
+    name: 'The Drowning Dark',
+    school: 'drowning',
+    icon: '❂',
+    evolution: true,
+    desc: 'A vast, crushing dark that drags everything in and dissolves it.',
+    baseCD: 4.0,
+    maxLevel: 1,
+    levels: [{ dmg: 14, radius: 200, dur: 6.0, tickRate: 0.30, slow: 0.35 }],
+    levelDesc: () => ['An enveloping cloud that slows, pulls, and corrodes.'],
+    fire(w, p) {
+      const s = this.levels[0];
+      const mult = schoolMult(p, 'ink') * schoolMult(p, 'voidwater');
+      const R = s.radius * p.stats.area * p.bonus.projSize;
+      pushEffect({
+        type: 'ink', x: p.x, y: p.y, radius: R,
+        dmg: s.dmg * p.stats.damage * mult,
+        tickRate: s.tickRate, tickT: 0, slowMul: s.slow,
+        life: s.dur, age: 0, color: '#6a46c0', drift: false,
+      });
+      // a slow, gripping vortex underneath, so it drags prey into the dark too
+      if (G.voids.length < CAPS.voids) {
+        G.voids.push({
+          x: p.x, y: p.y, vx: 0, vy: 0,
+          age: 0, life: s.dur,
+          pullR: R * 0.9, dmgR: 0, dmg: 0, tickT: 0,
+          color: '#3a1a6e', vortex: true, evolved: true,
+        });
+      }
+    }
+  },
 };
 
 // Evolution recipes — DETERMINISTIC 1:1: each unordered weapon pair maps to
@@ -1532,6 +1662,8 @@ const EVOLUTIONS = [
   { from: ['orbital_ring', 'coral_spire'], to: 'halo_array' },
   { from: ['drone_gun', 'torpedo_array'], to: 'swarm_fleet' },
   { from: ['prox_mine', 'thermal_vent'], to: 'abyssal_minefield' },
+  { from: ['photophore_lance', 'sonar_pulse'], to: 'refraction_lattice' },
+  { from: ['ink_plume', 'voidwater_orb'], to: 'drowning_dark' },
 ];
 
 // =========================================================================
@@ -1653,6 +1785,18 @@ const ARTIFACTS = {
     desc: 'Mine blasts deal +50% damage and are larger.',
     apply: (p) => { p.bonus.school.mine = (p.bonus.school.mine || 1) * 1.5; p.bonus.projSize *= 1.15; },
     remove: (p) => { p.bonus.school.mine /= 1.5; p.bonus.projSize /= 1.15; },
+  },
+  prism_lens: {
+    id: 'prism_lens', name: 'Photonic Lens', icon: '✦',
+    desc: 'Beam weapons deal +35% damage.',
+    apply: (p) => { p.bonus.school.beam = (p.bonus.school.beam || 1) * 1.35; },
+    remove: (p) => { p.bonus.school.beam /= 1.35; },
+  },
+  ink_gland: {
+    id: 'ink_gland', name: 'Cephalopod Gland', icon: '≋',
+    desc: 'Ink weapons deal +30% damage.',
+    apply: (p) => { p.bonus.school.ink = (p.bonus.school.ink || 1) * 1.30; },
+    remove: (p) => { p.bonus.school.ink /= 1.30; },
   },
   extra_shard: {
     id: 'extra_shard', name: 'Fractured Prism', icon: '◍',
@@ -2151,6 +2295,24 @@ function nearestEnemy(from, maxR, exclude) {
     if (d < bd) { bd = d; best = e; }
   });
   return best;
+}
+
+// Hitscan beam: damage every enemy in a straight corridor from (x,y) along dir,
+// out to `range`, within `halfW` of the line. Pierces everything. Grid-limited
+// to the corridor's bounding circle, then a perpendicular-distance test. Pushes
+// a short-lived visual 'beam' effect; damage is applied here, immediately.
+function castBeam(x, y, dir, range, halfW, dmg, color) {
+  const dx = Math.cos(dir), dy = Math.sin(dir);
+  const ex = x + dx * range, ey = y + dy * range;
+  grid.forEachInRadius(x + dx * range / 2, y + dy * range / 2, range / 2 + halfW + 30, e => {
+    if (e.dying) return;
+    const rx = e.x - x, ry = e.y - y;
+    const proj = rx * dx + ry * dy;           // distance along the beam
+    if (proj < 0 || proj > range) return;     // behind the vessel or past the tip
+    const perp = Math.abs(rx * dy - ry * dx); // perpendicular distance to the line
+    if (perp < halfW + e.radius) damageEnemy(e, dmg);
+  });
+  pushEffect({ type: 'beam', x1: x, y1: y, x2: ex, y2: ey, width: halfW * 2, color, life: 0.18, age: 0 });
 }
 
 function damageEnemy(e, dmg) {
@@ -2689,6 +2851,10 @@ function updateEnemies(dt) {
       }
     }
 
+    // ink slow — drifting ink bogs an enemy's own swimming down (external
+    // forces like void pull are applied after, so the dark still drags them in).
+    if (e.slowT > 0) { e.slowT -= dt; mvx *= e.slowMul; mvy *= e.slowMul; }
+
     // void pull — additive and ESCAPABLE. Pull is weak at the edge of the
     // radius and only strong very near the center, so fast enemies and those at
     // the rim can break free. The enemy keeps its own movement toward the
@@ -2864,6 +3030,32 @@ function updateEffects(dt) {
             y: fx.y + Math.sin(a) * r,
             vx: Math.cos(a) * 30, vy: Math.sin(a) * 30 - 20,
             life: 0.8, age: 0, color: fx.color, size: rand(3, 6),
+          });
+        }
+      }
+    } else if (fx.type === 'ink') {
+      // Drifting ink cloud: every enemy inside is slowed (refreshed each frame)
+      // and takes damage on the tick. Movement-control archetype.
+      if (fx.drift) { fx.x += fx.vx * dt; fx.y += fx.vy * dt; }
+      fx.tickT += dt;
+      const doTick = fx.tickT > fx.tickRate;
+      if (doTick) fx.tickT = 0;
+      grid.forEachInRadius(fx.x, fx.y, fx.radius, e => {
+        if (e.dying) return;
+        const d = Math.hypot(e.x - fx.x, e.y - fx.y);
+        if (d < fx.radius) {
+          e.slowT = Math.max(e.slowT || 0, 0.3);
+          e.slowMul = fx.slowMul;
+          if (doTick) damageEnemy(e, fx.dmg);
+        }
+      });
+      if (doTick) {
+        for (let i = 0; i < 3; i++) {
+          const a = rand(0, Math.PI * 2), r = rand(0, fx.radius);
+          pushParticle({
+            x: fx.x + Math.cos(a) * r, y: fx.y + Math.sin(a) * r,
+            vx: rand(-8, 8), vy: rand(-8, 8),
+            life: rand(0.6, 1.2), age: 0, color: fx.color, size: rand(2, 5),
           });
         }
       }
@@ -3523,6 +3715,33 @@ function render() {
       ctx.globalAlpha = 0.12;
       ctx.shadowBlur = 30; ctx.shadowColor = fx.color;
       ctx.beginPath(); ctx.arc(0, 0, fx.radius, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    } else if (fx.type === 'beam') {
+      // bright lance: a wide soft glow with a thin hot core, fading fast
+      ctx.save();
+      const alpha = 1 - fx.age / fx.life;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 24; ctx.shadowColor = fx.color;
+      ctx.strokeStyle = fx.color;
+      ctx.globalAlpha = alpha * 0.35;
+      ctx.lineWidth = fx.width;
+      ctx.beginPath(); ctx.moveTo(fx.x1, fx.y1); ctx.lineTo(fx.x2, fx.y2); ctx.stroke();
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = Math.max(2, fx.width * 0.28);
+      ctx.strokeStyle = '#ffffff';
+      ctx.beginPath(); ctx.moveTo(fx.x1, fx.y1); ctx.lineTo(fx.x2, fx.y2); ctx.stroke();
+      ctx.restore();
+    } else if (fx.type === 'ink') {
+      // soft inky blob: layered translucent fills, denser at the core
+      ctx.save();
+      ctx.translate(fx.x, fx.y);
+      const fade = Math.min(1, (fx.life - fx.age) / 0.6) * Math.min(1, fx.age / 0.3);
+      ctx.shadowBlur = 24; ctx.shadowColor = fx.color;
+      ctx.fillStyle = fx.color;
+      ctx.globalAlpha = 0.16 * fade;
+      ctx.beginPath(); ctx.arc(0, 0, fx.radius, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.22 * fade;
+      ctx.beginPath(); ctx.arc(0, 0, fx.radius * 0.6, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
   }

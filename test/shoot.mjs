@@ -89,6 +89,21 @@ await page.waitForFunction(() => !document.getElementById('stage-clear-screen').
 await page.waitForTimeout(150);
 await shot('06-stage-clear');
 
+// 7) New weapons firing — fresh run, equip the batch at max, let combat run.
+await page.evaluate(() => {
+  const av = window.__av;
+  av.G.stageIdx = 0; av.startGame();
+  av.G.player.weapons = [
+    { id: 'photophore_lance', lvl: 4, cd: 0 },
+    { id: 'ink_plume', lvl: 4, cd: 0 },
+  ];
+});
+await page.mouse.move(195, 480); await page.mouse.down();
+await page.mouse.move(220, 450, { steps: 6 });
+await page.waitForTimeout(3500);
+await page.mouse.up();
+await shot('07-new-weapons'); // ink cloud + both new weapon icons in the HUD
+
 await browser.close();
 if (errors.length) { console.log('PAGE ERRORS:\n  ' + errors.join('\n  ')); process.exit(1); }
 console.log('OK — shots in test/shots/');
