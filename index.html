@@ -716,7 +716,9 @@ const lerp = (a, b, t) => a + (b - a) * t;
 //      automatically.
 //  ADD AN EVOLUTION →  add an evolution weapon to WEAPONS with evolution:true
 //      and maxLevel:1, plus a recipe { from:[a,b], to } to EVOLUTIONS. Both
-//      "from" weapons at max level unlock it; evolving consumes both.
+//      "from" weapons at max level unlock it; evolving consumes both. Recipes
+//      are 1:1: each pair and each target must be unique (validator enforced).
+//      A weapon may appear in several recipes with different partners.
 //  ADD AN ARTIFACT →  add to ARTIFACTS { id, name, icon, desc, apply(p),
 //      remove(p) }. apply/remove MUST be exact inverses (slots are swappable).
 //      Write into p.bonus so weapons pick it up.
@@ -1514,22 +1516,22 @@ const WEAPONS = {
   },
 };
 
-// Evolution recipes: [baseId, requiredPassiveId or another weapon] -> evolvedId
-// We'll keep it simple: two weapons both at max level → evolution
+// Evolution recipes — DETERMINISTIC 1:1: each unordered weapon pair maps to
+// exactly one evolution, and each evolution has exactly one pair. Both source
+// weapons must be at max level; evolving consumes BOTH. A weapon can still
+// appear in several recipes (with different partners), so it can have more than
+// one *distinct* evolution depending on what you pair it with — but no two
+// recipes share the same pair or the same target. validateContent() enforces
+// this, so adding a recipe later can't reintroduce the old ambiguity.
 const EVOLUTIONS = [
-  { from: ['sonar_pulse', 'pressure_wave'], to: 'resonance_collapse', replaces: 'sonar_pulse' },
-  { from: ['bioelectric_arc', 'thermal_vent'], to: 'arc_furnace', replaces: 'bioelectric_arc' },
-  { from: ['parasite_swarm', 'torpedo_array'], to: 'drone_hive', replaces: 'parasite_swarm' },
-  { from: ['coral_spire', 'voidwater_orb'], to: 'black_reef', replaces: 'coral_spire' },
-  { from: ['sonar_pulse', 'voidwater_orb'], to: 'calling_depth', replaces: 'voidwater_orb' },
-  // new-weapon combos
-  { from: ['orbital_ring', 'coral_spire'], to: 'halo_array', replaces: 'orbital_ring' },
-  { from: ['drone_gun', 'torpedo_array'], to: 'swarm_fleet', replaces: 'drone_gun' },
-  { from: ['prox_mine', 'thermal_vent'], to: 'abyssal_minefield', replaces: 'prox_mine' },
-  // extra combo paths so weapons aren't locked to a single partner
-  { from: ['orbital_ring', 'bioelectric_arc'], to: 'halo_array', replaces: 'orbital_ring' },
-  { from: ['drone_gun', 'parasite_swarm'], to: 'swarm_fleet', replaces: 'drone_gun' },
-  { from: ['prox_mine', 'pressure_wave'], to: 'abyssal_minefield', replaces: 'prox_mine' },
+  { from: ['sonar_pulse', 'pressure_wave'], to: 'resonance_collapse' },
+  { from: ['bioelectric_arc', 'thermal_vent'], to: 'arc_furnace' },
+  { from: ['parasite_swarm', 'torpedo_array'], to: 'drone_hive' },
+  { from: ['coral_spire', 'voidwater_orb'], to: 'black_reef' },
+  { from: ['sonar_pulse', 'voidwater_orb'], to: 'calling_depth' },
+  { from: ['orbital_ring', 'coral_spire'], to: 'halo_array' },
+  { from: ['drone_gun', 'torpedo_array'], to: 'swarm_fleet' },
+  { from: ['prox_mine', 'thermal_vent'], to: 'abyssal_minefield' },
 ];
 
 // =========================================================================
@@ -2387,14 +2389,23 @@ function validateContent() {
     if (!isNum(w.maxLevel)) issues.push(`weapon "${id}" missing numeric maxLevel`);
   }
   const recipeTargets = new Set();
+  const seenPairs = new Set();
   EVOLUTIONS.forEach((r, i) => {
     if (!Array.isArray(r.from) || r.from.length !== 2) issues.push(`evolution #${i} needs exactly 2 "from" weapons`);
-    else r.from.forEach(f => {
-      if (!WEAPONS[f]) issues.push(`evolution #${i} "from" references unknown weapon "${f}"`);
-      else if (WEAPONS[f].evolution) issues.push(`evolution #${i} "from" weapon "${f}" is itself an evolution`);
-    });
+    else {
+      r.from.forEach(f => {
+        if (!WEAPONS[f]) issues.push(`evolution #${i} "from" references unknown weapon "${f}"`);
+        else if (WEAPONS[f].evolution) issues.push(`evolution #${i} "from" weapon "${f}" is itself an evolution`);
+      });
+      // Deterministic 1:1: no two recipes may share the same unordered pair.
+      const key = [...r.from].sort().join('+');
+      if (seenPairs.has(key)) issues.push(`evolution #${i} duplicate pair "${key}" (1:1 model: each pair maps to one evolution)`);
+      seenPairs.add(key);
+    }
     if (!WEAPONS[r.to]) issues.push(`evolution #${i} "to" references unknown weapon "${r.to}"`);
     else if (!WEAPONS[r.to].evolution) issues.push(`evolution #${i} target "${r.to}" is not flagged evolution:true`);
+    // Deterministic 1:1: no two recipes may share the same target.
+    if (recipeTargets.has(r.to)) issues.push(`evolution #${i} duplicate target "${r.to}" (1:1 model: each evolution has one pair)`);
     recipeTargets.add(r.to);
   });
   for (const id in WEAPONS) {
@@ -4521,7 +4532,7 @@ if (!window.__avDriverInstalled) {
 if (typeof window !== 'undefined' && window.__avExpose) {
   window.__av = {
     G, CAPS, WEAPONS, EVOLUTIONS, ARTIFACTS, PASSIVES, ENEMIES, ZONES,
-    STAGES, SAVE, OPTIONS, CONTENT_ISSUES, startGame, makePlayer, stageClear, activeStage, damagePlayer,
+    STAGES, SAVE, OPTIONS, CONTENT_ISSUES, startGame, makePlayer, stageClear, activeStage, damagePlayer, getEvolution,
   };
 }
 

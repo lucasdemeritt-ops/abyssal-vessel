@@ -89,25 +89,29 @@ Some weapons maintain **persistent entities** rather than firing one-shot projec
 
 Weapons read **artifact bonuses** from `p.bonus` (see below) and per-school damage via `schoolMult(p, school)`.
 
-### Evolutions (the combo system)
+### Evolutions (the combo system) — deterministic 1:1 (v4.0)
 Max two specific weapons (both at L4) and the next level-up offers a gold **EVOLUTION** card. Data-driven via the `EVOLUTIONS` array (recipes) and evolution entries in `WEAPONS` (flagged `evolution: true`). **Evolving consumes BOTH source weapons** and grants the evolved one (which should be ~as strong as both combined, or a bit more). Evolutions are **school-aware**, so damage artifacts still boost them.
 
-8 evolutions, 11 recipes (some weapons have two combo paths):
+**The model is 1:1:** each unordered weapon pair maps to exactly one evolution, and each evolution has exactly one pair. (The old dual-path recipes — `orbital+coral` *or* `orbital+bioelectric` → Halo, etc. — were removed in v4.0 as arbitrary.) A weapon may still appear in several recipes with *different* partners, so it can have more than one distinct evolution. `validateContent()` rejects any duplicate pair or duplicate target, so a future recipe can't reintroduce the ambiguity.
 
-| evolution | recipe(s) |
+8 evolutions, 8 recipes:
+
+| evolution | recipe |
 |---|---|
 | resonance_collapse (Resonance Collapse) | sonar + pressure |
 | arc_furnace (Arc Furnace) | bioelectric + thermal |
 | drone_hive (Drone Hive) | parasite + torpedo |
 | black_reef (Black Reef) | coral + voidwater |
 | calling_depth (The Calling Depth) | sonar + voidwater |
-| halo_array (Halo Array) | orbital + coral *or* orbital + bioelectric |
-| swarm_fleet (Drone Fleet) | drone + torpedo *or* drone + parasite |
-| abyssal_minefield (Abyssal Minefield) | mine + thermal *or* mine + pressure |
+| halo_array (Halo Array) | orbital + coral |
+| swarm_fleet (Drone Fleet) | drone + torpedo |
+| abyssal_minefield (Abyssal Minefield) | mine + thermal |
 
-`getEvolution()` returns the first recipe whose two `from` weapons are both at `maxLevel` and whose `to` isn't already owned. `buildUpgradePool()` always includes an available evolution; `presentUpgrades()` always surfaces it (never lost in the random mix). The recipe's `replaces` field is now vestigial — evolution apply removes **all** weapons in `from`.
+`getEvolution()` returns the first recipe whose two `from` weapons are both at `maxLevel` and whose `to` isn't already owned. `buildUpgradePool()` always includes an available evolution; `presentUpgrades()` always surfaces it (never lost in the random mix). Evolution apply removes **all** weapons in `from` (the old `replaces` field is gone).
 
-> **Adding a new weapon later:** add it to `WEAPONS` with a `levels` array + `fire`, add its `school` to `SCHOOLS`, and add a recipe to `EVOLUTIONS` plus an evolved weapon. The system is fully data-driven; nothing else needs editing.
+> **Adding a new weapon later:** add it to `WEAPONS` with a `levels` array + `fire`, add its `school` to `SCHOOLS`, and add a recipe to `EVOLUTIONS` (unique pair, unique target) plus an evolved weapon. The system is fully data-driven; nothing else needs editing. See the "ADDING CONTENT" banner at the top of the script.
+
+> **Design note (owner, v4.0):** the chosen direction is **deterministic 1:1** for now. A *choice-based* model (a combo unlocks a pick among several evolution directions, Magic-Survival style) was considered and deferred — the system is centralized in `getEvolution()`/`presentUpgrades()`, so it can be revisited without touching weapon code.
 
 ### Artifacts (18) — limited slots, found in chests
 Rare. A treasure chest spawns roughly every ~38s (one at a time, after 25s), with an off-screen gold direction arrow when off-screen. Walking into it pauses the game (`state='artifact'`) and offers a **choice of 2** (plus "leave it" → heal 30). You have **4 slots** (`ARTIFACT_SLOTS`). When full, picking a new one opens a swap screen (replace one, or keep your loadout). Artifacts apply/remove reversibly (must be — slots are swappable). They write into `p.bonus`:

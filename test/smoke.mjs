@@ -41,6 +41,13 @@ ok(STAGES.every(s => s.id && s.numeral && typeof s.difficulty === 'number'), 'ev
 const issues = env.av.CONTENT_ISSUES || [];
 ok(issues.length === 0, 'content validation clean' + (issues.length ? ':\n    ' + issues.slice(0, 6).join('\n    ') : ''));
 
+// --- Evolutions are deterministic 1:1 (unique pairs + targets) ------------
+const EVO = env.av.EVOLUTIONS;
+const pairKeys = EVO.map(r => [...r.from].sort().join('+'));
+const targets = EVO.map(r => r.to);
+ok(new Set(pairKeys).size === EVO.length, 'every evolution pair is unique (1:1)');
+ok(new Set(targets).size === EVO.length, 'every evolution target is unique (1:1)');
+
 // --- Title screen renders without input -----------------------------------
 for (let i = 0; i < 10; i++) env.frame();
 ok(env.state === 'title', "starts on the title screen");
@@ -50,6 +57,15 @@ G.stageIdx = 0;
 env.av.startGame();
 env.frame();
 ok(env.state === 'play', "DESCEND puts the game into 'play'");
+
+// Maxing both halves of a recipe offers exactly that (unique) evolution.
+{
+  const r = EVO[0];
+  G.player.weapons = r.from.map(id => ({ id, lvl: env.av.WEAPONS[id].maxLevel, cd: 0 }));
+  const offered = env.av.getEvolution();
+  ok(offered && offered.to === r.to, `maxed ${r.from.join('+')} offers ${r.to}`);
+  G.player.weapons = [{ id: 'sonar_pulse', lvl: 1, cd: 0 }]; // restore for the drive
+}
 
 // --- Drive until the stage clears, forcing level-ups and capturing caps ---
 const peak = {};
