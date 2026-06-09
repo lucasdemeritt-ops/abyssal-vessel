@@ -52,6 +52,19 @@ const dataUrls = await page.evaluate(() => {
     x.beginPath(); x.moveTo(s * 0.75, s * 0.4); x.lineTo(s * 0.88, s * 0.25); x.stroke();
     x.fillStyle = '#200'; x.beginPath(); x.arc(s * 0.42, s * 0.5, 1.6, 0, 7); x.arc(s * 0.58, s * 0.5, 1.6, 0, 7); x.fill();
   });
+  // Vessel (player sub) — static, facing +x (right). angle 0 == nose right.
+  out.vessel = make(1, 28, (x, f, s) => {
+    const cy = s / 2;
+    x.fillStyle = '#2a4a6a'; x.strokeStyle = '#a8e3ff'; x.lineWidth = 1.5;
+    x.beginPath();
+    x.moveTo(s * 0.78, cy - 6); x.quadraticCurveTo(s * 0.94, cy, s * 0.78, cy + 6);
+    x.lineTo(s * 0.3, cy + 7); x.quadraticCurveTo(s * 0.12, cy, s * 0.3, cy - 7);
+    x.closePath(); x.fill(); x.stroke();
+    x.strokeStyle = '#a8e3ff'; // fins
+    x.beginPath(); x.moveTo(s * 0.42, cy - 7); x.lineTo(s * 0.5, cy - 12); x.lineTo(s * 0.58, cy - 7);
+    x.moveTo(s * 0.42, cy + 7); x.lineTo(s * 0.5, cy + 12); x.lineTo(s * 0.58, cy + 7); x.stroke();
+    x.fillStyle = '#f5e8c0'; x.beginPath(); x.arc(s * 0.66, cy, 2.5, 0, 7); x.fill(); // viewport
+  });
   return out;
 });
 

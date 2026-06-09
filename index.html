@@ -3355,6 +3355,7 @@ const SPRITES = {
   // id: { src, fw, fh, frames, fps, scale, rotate }
   glassfin: { src: 'assets/glassfin.png', fw: 24, fh: 24, frames: 4, fps: 7, scale: 1.5, rotate: true },
   crab:     { src: 'assets/crab.png',     fw: 28, fh: 28, frames: 1, fps: 1, scale: 1.5, rotate: false },
+  vessel:   { src: 'assets/vessel.png',   fw: 28, fh: 28, frames: 1, fps: 1, scale: 1.2, rotate: true },
 };
 const _spriteCache = {};
 function loadSprite(id) {
@@ -3922,11 +3923,9 @@ function drawPlayer(ctx, p) {
   const flash = p.flashT > 0;
   const flicker = (Math.sin(G.t * 60) > 0.5) && p.invuln > 0;
   if (flicker) return;
+  // outer light glow — symmetric, so it's drawn unrotated in world space
   ctx.save();
   ctx.translate(p.x, p.y);
-  ctx.rotate(p.lastMoveAngle);
-
-  // outer light glow
   const lightR = 220 * p.stats.light * OPTIONS.lightIntensity;
   const lightGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, lightR);
   lightGrad.addColorStop(0, 'rgba(255, 245, 210, 0.18)');
@@ -3934,6 +3933,14 @@ function drawPlayer(ctx, p) {
   lightGrad.addColorStop(1, 'rgba(91, 231, 255, 0)');
   ctx.fillStyle = lightGrad;
   ctx.beginPath(); ctx.arc(0, 0, lightR, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // body — sprite if available, else the vector vessel below
+  if (drawSprite(ctx, 'vessel', p.x, p.y, p.lastMoveAngle, 0)) return;
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(p.lastMoveAngle);
 
   // submarine vessel
   ctx.shadowBlur = 16; ctx.shadowColor = '#5be7ff';
