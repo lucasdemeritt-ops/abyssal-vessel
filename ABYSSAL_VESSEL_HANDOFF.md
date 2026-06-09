@@ -192,6 +192,29 @@ A **stage** is a whole run. The `STAGES` registry reuses the shared zone progres
 
 ---
 
+## 4b. Sprites / graphics (Phase A, v4.3)
+
+The game renders **procedurally (vector + glow)** by default. v4.3 adds an **optional sprite layer** so any entity can render from a sprite sheet instead — **incrementally, one type at a time, with automatic vector fallback**. This is the migration path toward full art without risking what works.
+
+**The renderer plan (incremental, stop anywhere):**
+- **Phase A ✅ (done):** sprite system + animation + asset loading, demonstrated on Glassfin (animated) and Carapace (static) using placeholder PNGs in `assets/`.
+- **Phase B:** real placeholder art for a few entities; lock dimensions/scale/glow conventions; perf-test on a full swarm.
+- **Phase C:** roll sprites across all entities (mixed vector+sprite is fine).
+- **Phase D:** per-entity animation states (idle/move/hit/death) driven by existing flags (e.g. `dying`).
+- **Phase E (someday):** low-res pixel buffer (authentic pixel look + biggest mobile fill-rate win) + per-stage environment tiles.
+
+**How it works:**
+- `SPRITES[id] = { src, fw, fh, frames, fps, scale, rotate }` — sheets are horizontal strips of `frames` cells of `fw×fh`; assets live in `assets/` (served as files — needs a server / GitHub Pages, **not** `file://`).
+- `loadAllSprites()` (called at startup) loads them async and **fully guarded**: if `Image` is unavailable (headless) or a file fails, `drawSprite()` returns `false` and the entity's vector `draw()` runs. So the headless smoke test is unaffected.
+- Render dispatch: an enemy with `sprite:'<id>'` draws via `drawSprite(ctx, id, x, y, angle, e.id)` (`e.id` desyncs animation), else the vector path. `imageSmoothingEnabled=false` for crisp pixels.
+- **Placeholder generator:** `node test/gen-sprites.mjs` (headless Chromium → PNG strips into `assets/`). **Visual check:** `node test/shoot.mjs` writes `test/shots/08-sprites.png`.
+
+**Perf note (important):** the current vector renderer's main cost is `shadowBlur`/gradients per entity. Sprites with glow **baked into the PNG** let us drop runtime `shadowBlur`, so moving to sprites is expected to be a **net performance win**, not a cost. Pixel-art atlases are tiny; a single atlas drawn via `drawImage` is cheap even at the 320-enemy cap. Animation is ~free (frame = `floor(t*fps) % frames`).
+
+**Asset delivery decision (owner):** **assets folder** (PNGs under `assets/`) rather than base64-inlined — easier to iterate art, works on GitHub Pages. Trade-off: needs a server/Pages (won't load from a bare downloaded `file://`).
+
+---
+
 ## 5. Dev & test workflow
 
 This project was built **without** a normal toolchain, so there's a manual but reliable cycle. In Claude Code with Node available, replicate it:
@@ -265,6 +288,7 @@ Earlier balance work (still relevant context):
 - Perf/caps: `grid` (+ `grid.forEachInRadius`, `nearestEnemy`), `CAPS`, `pushEffect()`, `pushPickup()`, `pushParticle()`.
 - Data tables: `WEAPONS`, `SCHOOLS`, `EVOLUTIONS`, `ARTIFACTS` (+ `ARTIFACT_SLOTS`), `PASSIVES`, `ZONES`, `ENEMIES`, `STAGES`.
 - Stages/persistence/options: `activeStage()`, `SAVE` (+ `loadSave`/`persistSave`), `OPTIONS` (+ `OPTION_SCHEMA`, `applyOptionsToRun`), `validateContent()`/`CONTENT_ISSUES`.
+- Sprites: `SPRITES`, `loadSprite`/`loadAllSprites`, `drawSprite(ctx,id,x,y,rot,seed)`; enemy `sprite:'<id>'` field. Tools: `test/gen-sprites.mjs`, `test/balance.mjs`.
 - Flow: `startGame()`, `gameOver()`, `stageClear()`, `renderStageSelect()`/`selectStage()`, `openOptions()`/`renderOptions()`, `returnToTitle()`, `spawnEnemy()`, `spawnBoss()`, `spawnChest()`, `killEnemy()`, `damageEnemy()`, `damagePlayer()`, `levelUp()`, `skipLevelUp()`, `buildUpgradePool()`, `presentUpgrades()`, `getEvolution()`, `openChest()`, `equipArtifact()`, `swapArtifact()`.
 - Update fns (run via `safeCall` when `state==='play'`): `updatePlayer`, `updateEnemies`, `updateProjectiles`, `updateEffects`, `updateSpires`, `updateDeployables` (orbiters/drones/mines), `updatePickups`, `updateChests`, `updateParticles`, `ambientParticles`, `updateHUD`, then `render`. Also `progress` (stage-clear check) runs first.
 - Test seam: `window.__avExpose` → `window.__av` (read refs for the headless harness; never set in production).

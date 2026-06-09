@@ -71,9 +71,12 @@ await shot('04-gameplay');
 
 // 5) Level-up screen — force XP over the threshold via the test seam, then
 // wait for the upgrade screen to actually open.
-await page.evaluate(() => { const p = window.__av.G.player; p.xp = p.xpToNext + 1; });
-await page.waitForFunction(() => window.__av.G.state === 'levelup', { timeout: 5000 });
-await page.waitForSelector('#upgrade-screen:not(.hidden)');
+await page.evaluate(() => {
+  const av = window.__av;
+  if (av.G.state !== 'play') { av.G.stageIdx = 0; av.startGame(); }
+  av.levelUp(); // deterministic: opens the upgrade screen
+});
+await page.waitForSelector('#upgrade-screen:not(.hidden)', { timeout: 8000 });
 await page.waitForTimeout(200);
 await shot('05-levelup');
 
@@ -84,8 +87,9 @@ await page.evaluate(() => {
   document.getElementById('upgrade-screen').classList.add('hidden');
   av.G.state = 'play';
   av.G.t = av.activeStage().clearTime + 1;
+  av.stageClear(); // drive the screen directly (loop-trigger path is covered by the smoke test)
 });
-await page.waitForFunction(() => !document.getElementById('stage-clear-screen').classList.contains('hidden'), { timeout: 5000 });
+await page.waitForFunction(() => !document.getElementById('stage-clear-screen').classList.contains('hidden'), null, { timeout: 8000 });
 await page.waitForTimeout(150);
 await shot('06-stage-clear');
 
@@ -103,6 +107,24 @@ await page.mouse.move(220, 450, { steps: 6 });
 await page.waitForTimeout(3500);
 await page.mouse.up();
 await shot('07-new-weapons'); // ink cloud + both new weapon icons in the HUD
+
+// 8) Sprite layer — ring the player with Glassfins (animated sprite) and
+// Carapaces (static sprite) so the Phase-A sprite rendering is visible.
+await page.evaluate(() => {
+  const av = window.__av; av.G.stageIdx = 0; av.startGame();
+  const p = av.G.player;
+  for (let i = 0; i < 16; i++) {
+    const a = i / 16 * Math.PI * 2, r = 60 + (i % 3) * 35;
+    av.G.enemies.push({
+      id: 5000 + i, type: i % 3 === 0 ? 'crab' : 'small_fish',
+      x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r, vx: 0, vy: 0, angle: a + Math.PI,
+      hp: 50, maxHp: 50, dmg: 5, speed: 0, radius: 9, color: '#5be7ff', glow: 18, xp: 1,
+      behavior: 'chase', flashT: 0, dying: false,
+    });
+  }
+});
+await page.waitForTimeout(300);
+await shot('08-sprites');
 
 await browser.close();
 if (errors.length) { console.log('PAGE ERRORS:\n  ' + errors.join('\n  ')); process.exit(1); }

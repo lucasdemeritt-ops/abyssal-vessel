@@ -458,7 +458,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v4.2</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v4.3</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -603,7 +603,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v4.2'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v4.3'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -728,6 +728,10 @@ const lerp = (a, b, t) => a + (b - a) * t;
 //  ADD A STAGE    →  append to STAGES (see the STAGES header for knobs).
 //  ADD AN OPTION  →  add a row to OPTION_SCHEMA and read OPTIONS.<key> where
 //      it applies (render-time) or in applyOptionsToRun() (per-run).
+//  ADD A SPRITE   →  drop a PNG strip in assets/, add a SPRITES entry
+//      { src, fw, fh, frames, fps, scale, rotate }, then set sprite:'<id>' on
+//      the ENEMIES entry. Renders from the sheet with vector fallback (see the
+//      SPRITES/ASSETS section). Placeholder generator: test/gen-sprites.mjs.
 //
 //  Performance rules that are load-bearing (don't bypass): proximity queries go
 //  through grid.forEachInRadius / nearestEnemy; pushes go through pushEffect /
@@ -1834,6 +1838,7 @@ const ENEMIES = {
     hp: 8, dmg: 6, speed: 70, radius: 8,
     color: '#5be7ff', glow: 18, xp: 1,
     behavior: 'chase',
+    sprite: 'glassfin', // Phase A demo: animated sprite, falls back to draw() below
     draw(ctx, e) {
       ctx.save();
       ctx.translate(e.x, e.y);
@@ -1851,6 +1856,7 @@ const ENEMIES = {
     hp: 22, dmg: 10, speed: 38, radius: 11,
     color: '#ff9560', glow: 14, xp: 2,
     behavior: 'chase',
+    sprite: 'crab', // Phase A demo: static sprite
     draw(ctx, e) {
       ctx.save(); ctx.translate(e.x, e.y);
       ctx.shadowBlur = 14; ctx.shadowColor = e.color;
@@ -3330,6 +3336,64 @@ function ambientParticles(dt) {
 }
 
 // =========================================================================
+//  SPRITES / ASSETS  (Phase A — optional sprite layer over the vector renderer)
+//
+//  The game renders procedurally (vector + glow) by default. This layer lets
+//  any entity render from a sprite sheet instead, ONE type at a time, with
+//  automatic fallback to its vector draw() if the art isn't present/loaded.
+//  So sprites can be rolled in incrementally with zero risk to what works.
+//
+//  Sheets are horizontal strips of `frames` cells (frame N at x = N*fw).
+//  Assets live in assets/ (served as files; works on GitHub Pages / a server).
+//  Loading is async and fully guarded: if Image isn't available (headless) or
+//  a file fails to load, drawSprite() returns false and the vector draw runs.
+//
+//  TO ADD A SPRITE: drop a PNG strip in assets/, add an entry to SPRITES, then
+//  set `sprite: '<id>'` on the ENEMIES entry (or call drawSprite directly).
+// =========================================================================
+const SPRITES = {
+  // id: { src, fw, fh, frames, fps, scale, rotate }
+  glassfin: { src: 'assets/glassfin.png', fw: 24, fh: 24, frames: 4, fps: 7, scale: 1.5, rotate: true },
+  crab:     { src: 'assets/crab.png',     fw: 28, fh: 28, frames: 1, fps: 1, scale: 1.5, rotate: false },
+};
+const _spriteCache = {};
+function loadSprite(id) {
+  if (_spriteCache[id]) return;
+  const def = SPRITES[id];
+  if (!def) return;
+  const entry = { def, img: null, ready: false };
+  _spriteCache[id] = entry;
+  try {
+    if (typeof Image === 'undefined') return; // headless / no DOM image support → vector fallback
+    const img = new Image();
+    img.onload = () => { entry.ready = true; };
+    img.onerror = () => { /* missing art → keep vector fallback */ };
+    img.src = def.src;
+    entry.img = img;
+  } catch (e) { /* fallback to vector */ }
+}
+function loadAllSprites() { for (const id in SPRITES) loadSprite(id); }
+loadAllSprites();
+
+// Draw sprite `id` centered at (x,y). `seed` desyncs per-entity animation.
+// Returns true if it drew, false if the sprite isn't ready (caller falls back).
+function drawSprite(ctx, id, x, y, rot, seed) {
+  const c = _spriteCache[id];
+  if (!c || !c.ready || !c.img) return false;
+  const d = c.def;
+  const frame = d.frames > 1 ? Math.floor(G.t * d.fps + (seed || 0)) % d.frames : 0;
+  const sw = d.fw, sh = d.fh;
+  const dw = sw * (d.scale || 1), dh = sh * (d.scale || 1);
+  ctx.save();
+  ctx.translate(x, y);
+  if (d.rotate && rot) ctx.rotate(rot);
+  ctx.imageSmoothingEnabled = false; // crisp pixels
+  ctx.drawImage(c.img, frame * sw, 0, sw, sh, -dw / 2, -dh / 2, dw, dh);
+  ctx.restore();
+  return true;
+}
+
+// =========================================================================
 //  RENDER
 // =========================================================================
 function render() {
@@ -3596,8 +3660,10 @@ function render() {
   const viewT = G.cam.y - H / 2 - 40, viewB = G.cam.y + H / 2 + 40;
   for (const e of G.enemies) {
     if (e.x < viewL || e.x > viewR || e.y < viewT || e.y > viewB) continue; // off-screen, skip draw
-    if (ENEMIES[e.type].draw) {
-      ENEMIES[e.type].draw(ctx, e);
+    // Sprite if this type has one loaded; otherwise the vector draw().
+    const sid = ENEMIES[e.type].sprite;
+    if (!(sid && drawSprite(ctx, sid, e.x, e.y, e.angle, e.id))) {
+      if (ENEMIES[e.type].draw) ENEMIES[e.type].draw(ctx, e);
     }
     // ignite indicator
     if (e.ignite) {
@@ -4751,7 +4817,7 @@ if (!window.__avDriverInstalled) {
 if (typeof window !== 'undefined' && window.__avExpose) {
   window.__av = {
     G, CAPS, WEAPONS, EVOLUTIONS, ARTIFACTS, PASSIVES, ENEMIES, ZONES,
-    STAGES, SAVE, OPTIONS, CONTENT_ISSUES, startGame, makePlayer, stageClear, activeStage, damagePlayer, getEvolution,
+    STAGES, SAVE, OPTIONS, CONTENT_ISSUES, SPRITES, startGame, makePlayer, stageClear, activeStage, damagePlayer, getEvolution, levelUp,
   };
 }
 

@@ -29,7 +29,8 @@ function makeCtx() {
     },
     save() {}, restore() {}, beginPath() {}, closePath() {}, fill() {}, stroke() {},
     moveTo() {}, lineTo() {}, quadraticCurveTo() {}, fillText() {}, fillRect() {},
-    translate() {}, rotate() {}, setTransform() {},
+    translate() {}, rotate() {}, setTransform() {}, drawImage() {},
+    imageSmoothingEnabled: true,
     arc(x, y, r) { if (bad(r) || r < 0) throw new Error('arc radius invalid: ' + r); },
     ellipse(x, y, rx, ry) {
       if (bad(rx) || rx < 0) throw new Error('ellipse rx invalid: ' + rx);
