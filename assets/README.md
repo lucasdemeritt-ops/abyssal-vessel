@@ -8,8 +8,17 @@ time with zero risk.
 
 ## File format
 - **PNG, transparent background.**
-- **Animation = a horizontal strip:** frame 0 leftmost, frame N at `x = N * fw`.
-  All frames the same `fw × fh`. A static sprite is just a 1-frame strip.
+- **Simple animation = one horizontal strip:** frame 0 leftmost, frame N at
+  `x = N * fw`. All frames the same `fw × fh`. A static sprite is a 1-frame strip.
+- **Animation states = a grid:** each **row** is a clip (idle / move / hit /
+  death), each **column** a frame. Declare it with `anims` in `SPRITES`
+  (`{ row, frames, fps, loop }` per clip). State is auto-picked per entity each
+  frame: **death > hit > move > idle**. `loop:false` holds the last frame.
+  A row may have fewer real frames than the widest row — just set that clip's
+  `frames` and leave the extra cells transparent. See `glassfin.png` (4 rows).
+- **Death clips:** if a sprite has a `death` clip, that creature lingers as an
+  inert corpse for the clip's length, then vanishes. No death clip ⇒ it pops
+  instantly (current behavior). So death art is purely additive.
 - **Pixel grid:** author on one consistent base. Recommended **24×24** for
   small creatures, **28×28** for mid, **32×32** for large/bosses. Keep a few
   px of padding inside the cell so glow/rotation don't clip.

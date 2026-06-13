@@ -200,8 +200,10 @@ The game renders **procedurally (vector + glow)** by default. v4.3 adds an **opt
 - **Phase A ✅ (done):** sprite system + animation + asset loading, demonstrated on Glassfin (animated) and Carapace (static) using placeholder PNGs in `assets/`.
 - **Phase B:** real placeholder art for a few entities; lock dimensions/scale/glow conventions; perf-test on a full swarm.
 - **Phase C:** roll sprites across all entities (mixed vector+sprite is fine).
-- **Phase D:** per-entity animation states (idle/move/hit/death) driven by existing flags (e.g. `dying`).
+- **Phase D ✅ (system done):** per-entity animation states (idle/move/hit/death) driven by existing flags — see "Animation states" below. Demoed on Glassfin. Remaining work is per-type art + tuning, not engine.
 - **Phase E (someday):** low-res pixel buffer (authentic pixel look + biggest mobile fill-rate win) + per-stage environment tiles.
+
+**Animation states (v4.3):** a sprite def may declare `anims`, turning the sheet into a **grid** — each clip is a **row** (`y = row*fh`), each frame a column. `pickAnim()` chooses a clip per-entity every frame from its flags: **death** (`e.dying`) > **hit** (`e.flashT>0`) > **move** (`|vx|+|vy|>4`) > **idle**. Per-entity `e._sa = {name,t}` restarts the timeline on state change; `loop:false` clips hold their last frame. A type whose sprite has a **death** clip lingers as an **inert corpse** for exactly that clip's length (`spriteDeathDur`), then is culled — types without one are removed immediately, so there's **no lifecycle change until death art exists**. Corpses are already non-colliding (every collision/AI loop skips `e.dying`). Sprites with no `anims` use the legacy single-row time-cycled strip. Example sheet layout is `assets/glassfin.png` (4 rows: idle/move/hit/death).
 
 **How it works:**
 - `SPRITES[id] = { src, fw, fh, frames, fps, scale, rotate }` — sheets are horizontal strips of `frames` cells of `fw×fh`; assets live in `assets/` (served as files — needs a server / GitHub Pages, **not** `file://`).

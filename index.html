@@ -2335,6 +2335,7 @@ function damageEnemy(e, dmg) {
 
 function killEnemy(e) {
   e.dying = true;
+  e.deathT = 0; // corpse-linger clock (only matters if the sprite has a death clip)
   G.enemiesKilled++;
   // XP drop
   pushPickup({
@@ -2802,7 +2803,7 @@ function updatePlayer(dt) {
 function updateEnemies(dt) {
   const p = G.player;
   for (const e of G.enemies) {
-    if (e.dying) continue;
+    if (e.dying) { e.deathT = (e.deathT || 0) + dt; continue; } // inert corpse; play out death clip
     if (e.flashT > 0) e.flashT -= dt; e.flash = e.flashT > 0;
     if (e.ignite) {
       e.ignite.t += dt;
@@ -2904,8 +2905,9 @@ function updateEnemies(dt) {
     }
   }
 
-  // remove dead/dying
-  G.enemies = G.enemies.filter(e => !e.dying);
+  // remove dead/dying — corpses with a death clip linger until it finishes,
+  // then are culled; types without one are removed immediately (as before).
+  G.enemies = G.enemies.filter(e => !e.dying || (e.deathT || 0) < spriteDeathDur(e.type));
 }
 
 function updateProjectiles(dt) {
@@ -3350,12 +3352,30 @@ function ambientParticles(dt) {
 //
 //  TO ADD A SPRITE: drop a PNG strip in assets/, add an entry to SPRITES, then
 //  set `sprite: '<id>'` on the ENEMIES entry (or call drawSprite directly).
+//
+//  ANIMATION STATES (optional): a sprite can declare `anims`, where the sheet
+//  is a GRID — each clip is a ROW (y = row*fh) of `frames` cells. State is
+//  chosen per-entity from its flags every frame: death (e.dying) > hit
+//  (e.flashT>0) > move (moving) > idle. Non-looping clips (loop:false) hold
+//  their last frame. A type with a `death` clip lingers as an inert corpse for
+//  exactly that clip's length (it's already non-colliding once dying); types
+//  with no death clip are removed immediately, as before. Sprites with no
+//  `anims` use the legacy single-row strip (time-cycled, see below).
 // =========================================================================
 const SPRITES = {
-  // id: { src, fw, fh, frames, fps, scale, rotate }
-  glassfin: { src: 'assets/glassfin.png', fw: 24, fh: 24, frames: 4, fps: 7, scale: 1.5, rotate: true },
-  crab:     { src: 'assets/crab.png',     fw: 28, fh: 28, frames: 1, fps: 1, scale: 1.5, rotate: false },
-  vessel:   { src: 'assets/vessel.png',   fw: 28, fh: 28, frames: 1, fps: 1, scale: 1.2, rotate: true },
+  // id: { src, fw, fh, scale, rotate, + EITHER frames/fps (single strip)
+  //       OR anims:{ name:{ row, frames, fps, loop } } (grid of clips) }
+  glassfin: {
+    src: 'assets/glassfin.png', fw: 24, fh: 24, scale: 1.5, rotate: true,
+    anims: {
+      idle:  { row: 0, frames: 4, fps: 5 },
+      move:  { row: 1, frames: 4, fps: 10 },
+      hit:   { row: 2, frames: 2, fps: 14, loop: false },
+      death: { row: 3, frames: 4, fps: 12, loop: false },
+    },
+  },
+  crab:   { src: 'assets/crab.png',   fw: 28, fh: 28, frames: 1, fps: 1, scale: 1.5, rotate: false },
+  vessel: { src: 'assets/vessel.png', fw: 28, fh: 28, frames: 1, fps: 1, scale: 1.2, rotate: true },
 };
 const _spriteCache = {};
 function loadSprite(id) {
@@ -3376,20 +3396,47 @@ function loadSprite(id) {
 function loadAllSprites() { for (const id in SPRITES) loadSprite(id); }
 loadAllSprites();
 
-// Draw sprite `id` centered at (x,y). `seed` desyncs per-entity animation.
-// Returns true if it drew, false if the sprite isn't ready (caller falls back).
-function drawSprite(ctx, id, x, y, rot, seed) {
+// Pick the animation clip name for entity `e` from its flags (highest first).
+function pickAnim(anims, e) {
+  if (anims.death && e.dying) return 'death';
+  if (anims.hit && e.flashT > 0) return 'hit';
+  if (anims.move && (Math.abs(e.vx || 0) + Math.abs(e.vy || 0)) > 4) return 'move';
+  return anims.idle ? 'idle' : Object.keys(anims)[0];
+}
+
+// Corpse-linger time for a type: the death clip length, or 0 if none loaded
+// (0 ⇒ removed immediately, preserving the original lifecycle).
+function spriteDeathDur(type) {
+  const id = ENEMIES[type] && ENEMIES[type].sprite;
+  const c = id && _spriteCache[id];
+  const dd = c && c.ready && c.def.anims && c.def.anims.death;
+  return dd ? dd.frames / (dd.fps || 8) : 0;
+}
+
+// Draw sprite `id` for entity `e` centered at (e.x,e.y), rotated to `rot`.
+// Returns true if it drew, false if not ready (caller falls back to vector).
+function drawSprite(ctx, id, e, rot) {
   const c = _spriteCache[id];
   if (!c || !c.ready || !c.img) return false;
   const d = c.def;
-  const frame = d.frames > 1 ? Math.floor(G.t * d.fps + (seed || 0)) % d.frames : 0;
-  const sw = d.fw, sh = d.fh;
-  const dw = sw * (d.scale || 1), dh = sh * (d.scale || 1);
+  let col = 0, row = 0;
+  if (d.anims) {
+    const name = pickAnim(d.anims, e);
+    const clip = d.anims[name];
+    if (!e._sa || e._sa.name !== name) e._sa = { name, t: 0 }; // restart on state change
+    e._sa.t += G.dt;
+    col = Math.floor(e._sa.t * (clip.fps || 8));
+    col = clip.loop === false ? Math.min(col, clip.frames - 1) : col % clip.frames;
+    row = clip.row || 0;
+  } else {
+    col = d.frames > 1 ? Math.floor(G.t * d.fps + (e.id || 0)) % d.frames : 0;
+  }
+  const dw = d.fw * (d.scale || 1), dh = d.fh * (d.scale || 1);
   ctx.save();
-  ctx.translate(x, y);
+  ctx.translate(e.x, e.y);
   if (d.rotate && rot) ctx.rotate(rot);
   ctx.imageSmoothingEnabled = false; // crisp pixels
-  ctx.drawImage(c.img, frame * sw, 0, sw, sh, -dw / 2, -dh / 2, dw, dh);
+  ctx.drawImage(c.img, col * d.fw, row * d.fh, d.fw, d.fh, -dw / 2, -dh / 2, dw, dh);
   ctx.restore();
   return true;
 }
@@ -3663,7 +3710,7 @@ function render() {
     if (e.x < viewL || e.x > viewR || e.y < viewT || e.y > viewB) continue; // off-screen, skip draw
     // Sprite if this type has one loaded; otherwise the vector draw().
     const sid = ENEMIES[e.type].sprite;
-    if (!(sid && drawSprite(ctx, sid, e.x, e.y, e.angle, e.id))) {
+    if (!(sid && drawSprite(ctx, sid, e, e.angle))) {
       if (ENEMIES[e.type].draw) ENEMIES[e.type].draw(ctx, e);
     }
     // ignite indicator
@@ -3936,7 +3983,7 @@ function drawPlayer(ctx, p) {
   ctx.restore();
 
   // body — sprite if available, else the vector vessel below
-  if (drawSprite(ctx, 'vessel', p.x, p.y, p.lastMoveAngle, 0)) return;
+  if (drawSprite(ctx, 'vessel', p, p.lastMoveAngle)) return;
 
   ctx.save();
   ctx.translate(p.x, p.y);

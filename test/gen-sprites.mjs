@@ -35,13 +35,30 @@ const dataUrls = await page.evaluate(() => {
     for (let f = 0; f < frames; f++) { x.save(); x.translate(f * cell, 0); drawFrame(x, f, cell); x.restore(); }
     return c.toDataURL('image/png');
   };
-  // Glassfin — 4-frame swimming wiggle, cyan
-  out.glassfin = make(4, 24, (x, f, s) => {
-    const wob = Math.sin(f / 4 * Math.PI * 2) * 2;
-    x.fillStyle = '#5be7ff';
-    x.beginPath(); x.ellipse(s * 0.45, s / 2, s * 0.28, s * 0.18, 0, 0, Math.PI * 2); x.fill();
+  // makeGrid: each row is an animation clip, each column a frame.
+  const makeGrid = (cols, rows, cell, drawCell) => {
+    const c = document.createElement('canvas');
+    c.width = cell * cols; c.height = cell * rows;
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+    for (let r = 0; r < rows; r++) for (let f = 0; f < cols; f++) { x.save(); x.translate(f * cell, r * cell); drawCell(x, f, r, cell); x.restore(); }
+    return c.toDataURL('image/png');
+  };
+  // Glassfin — multi-state sheet (rows: idle, move, hit, death), cyan
+  const fish = (x, s, { wob = 0, sc = 1, a = 1, white = false } = {}) => {
+    x.save(); x.globalAlpha = a;
+    x.translate(s * 0.45, s / 2); x.scale(sc, sc); x.translate(-s * 0.45, -s / 2);
+    x.fillStyle = white ? '#ffffff' : '#5be7ff';
+    x.beginPath(); x.ellipse(s * 0.45, s / 2, s * 0.28, s * 0.18, 0, 0, 7); x.fill();
     x.beginPath(); x.moveTo(s * 0.2, s / 2); x.lineTo(s * 0.05, s / 2 - 5 + wob); x.lineTo(s * 0.05, s / 2 + 5 + wob); x.closePath(); x.fill();
-    x.fillStyle = '#012'; x.beginPath(); x.arc(s * 0.6, s / 2, 1.6, 0, Math.PI * 2); x.fill();
+    if (!white) { x.fillStyle = '#012'; x.beginPath(); x.arc(s * 0.6, s / 2, 1.6, 0, 7); x.fill(); }
+    x.restore();
+  };
+  out.glassfin = makeGrid(4, 4, 24, (x, f, r, s) => {
+    const w = a => Math.sin(f / 4 * Math.PI * 2) * a;
+    if (r === 0) fish(x, s, { wob: w(1.2) });                       // idle: gentle bob
+    else if (r === 1) fish(x, s, { wob: w(3.2) });                  // move: faster wiggle
+    else if (r === 2) { if (f < 2) fish(x, s, { white: true }); }   // hit: white flash (2 frames)
+    else { const k = f / 3; fish(x, s, { sc: 1 - k * 0.7, a: 1 - k * 0.9 }); } // death: shrink + fade
   });
   // Carapace (crab) — static, orange tank
   out.crab = make(1, 28, (x, f, s) => {
