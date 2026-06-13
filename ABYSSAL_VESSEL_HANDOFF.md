@@ -199,7 +199,7 @@ The game renders **procedurally (vector + glow)** by default. v4.3 adds an **opt
 **The renderer plan (incremental, stop anywhere):**
 - **Phase A ✅ (done):** sprite system + animation + asset loading, demonstrated on Glassfin (animated) and Carapace (static) using placeholder PNGs in `assets/`.
 - **Phase B:** real placeholder art for a few entities; lock dimensions/scale/glow conventions; perf-test on a full swarm.
-- **Phase C:** roll sprites across all entities (mixed vector+sprite is fine).
+- **Phase C ✅ (wiring done):** every enemy + the player now carries a `sprite:` field and a `SPRITES` descriptor sized to its hitbox; the 9 without art use `src:''` (pending) and render as vectors. Adding art is a one-line `src` set — see `assets/README.md` for the per-entity target grid/scale table.
 - **Phase D ✅ (system done):** per-entity animation states (idle/move/hit/death) driven by existing flags — see "Animation states" below. Demoed on Glassfin. Remaining work is per-type art + tuning, not engine.
 - **Phase E (someday):** low-res pixel buffer (authentic pixel look + biggest mobile fill-rate win) + per-stage environment tiles.
 

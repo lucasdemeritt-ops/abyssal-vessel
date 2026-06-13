@@ -1874,6 +1874,7 @@ const ENEMIES = {
   },
   jelly: {
     name: 'Drift Bell',
+    sprite: 'jelly', // pre-wired; vector until art (SPRITES.jelly.src) is set
     hp: 14, dmg: 8, speed: 50, radius: 12,
     color: '#a8e3ff', glow: 22, xp: 2,
     behavior: 'drift',
@@ -1905,6 +1906,7 @@ const ENEMIES = {
   },
   squid: {
     name: 'Inkmind',
+    sprite: 'squid', // pre-wired; vector until art is set
     hp: 28, dmg: 7, speed: 58, radius: 10,
     color: '#ff5bdf', glow: 20, xp: 3,
     behavior: 'ranged', range: 240, fireCD: 3.2,
@@ -1934,6 +1936,7 @@ const ENEMIES = {
   },
   wreck_drone: {
     name: 'Wreck Drone',
+    sprite: 'wreck_drone', // pre-wired; vector until art is set
     hp: 60, dmg: 14, speed: 60, radius: 13,
     color: '#b8c8d8', glow: 12, xp: 4,
     behavior: 'chase',
@@ -1953,6 +1956,7 @@ const ENEMIES = {
   },
   tentacle: {
     name: 'Reaching Arm',
+    sprite: 'tentacle', // pre-wired; vector until art is set
     hp: 45, dmg: 14, speed: 52, radius: 14,
     color: '#9b6bff', glow: 18, xp: 4,
     behavior: 'chase',
@@ -1979,6 +1983,7 @@ const ENEMIES = {
   },
   eye_cluster: {
     name: 'Witness Cluster',
+    sprite: 'eye_cluster', // pre-wired; vector until art is set
     hp: 35, dmg: 9, speed: 58, radius: 12,
     color: '#ff5bdf', glow: 24, xp: 5,
     behavior: 'chase',
@@ -2004,6 +2009,7 @@ const ENEMIES = {
   },
   small_eye: {
     name: 'Witness',
+    sprite: 'small_eye', // pre-wired; vector until art is set
     hp: 8, dmg: 5, speed: 72, radius: 6,
     color: '#ff5bdf', glow: 16, xp: 1,
     behavior: 'chase',
@@ -2020,6 +2026,7 @@ const ENEMIES = {
   },
   anglerfish: {
     name: 'Lanternjaw',
+    sprite: 'anglerfish', // pre-wired; vector until art is set
     hp: 120, dmg: 18, speed: 72, radius: 18,
     color: '#ffcc40', glow: 30, xp: 8,
     behavior: 'chase',
@@ -2051,6 +2058,7 @@ const ENEMIES = {
   },
   void_maw: {
     name: 'Void Maw',
+    sprite: 'void_maw', // pre-wired; vector until art is set
     hp: 90, dmg: 14, speed: 68, radius: 15,
     color: '#7340ff', glow: 28, xp: 7,
     behavior: 'teleport',
@@ -2093,6 +2101,7 @@ const ENEMIES = {
   },
   leviathan: {
     name: 'Leviathan Mote',
+    sprite: 'leviathan', // pre-wired; vector until art is set
     hp: 200, dmg: 30, speed: 70, radius: 24,
     color: '#ff3060', glow: 36, xp: 14,
     behavior: 'chase', boss: true,
@@ -3376,12 +3385,28 @@ const SPRITES = {
   },
   crab:   { src: 'assets/crab.png',   fw: 28, fh: 28, frames: 1, fps: 1, scale: 1.5, rotate: false },
   vessel: { src: 'assets/vessel.png', fw: 28, fh: 28, frames: 1, fps: 1, scale: 1.2, rotate: true },
+
+  // PENDING — every other enemy is pre-wired (ENEMIES[*].sprite) with a
+  // descriptor already sized to its hitbox (grid by size tier, scale ≈
+  // 4·radius/fw). `src:''` means "no art yet" → loadSprite skips it → the
+  // entity stays on its vector draw(). ONE-LINE DROP-IN: author the PNG to the
+  // listed grid (static is fine; see assets/README for multi-state sheets),
+  // then set `src` (and bump frames/fps or add `anims` if animated).
+  jelly:       { src: '', fw: 28, fh: 28, frames: 1, fps: 1, scale: 1.7, rotate: false }, // Drift Bell r12
+  squid:       { src: '', fw: 28, fh: 28, frames: 1, fps: 1, scale: 1.4, rotate: false }, // Inkmind r10
+  wreck_drone: { src: '', fw: 28, fh: 28, frames: 1, fps: 1, scale: 1.8, rotate: false }, // Wreck Drone r13
+  tentacle:    { src: '', fw: 28, fh: 28, frames: 1, fps: 1, scale: 2.0, rotate: false }, // Reaching Arm r14
+  eye_cluster: { src: '', fw: 28, fh: 28, frames: 1, fps: 1, scale: 1.7, rotate: false }, // Witness Cluster r12
+  small_eye:   { src: '', fw: 24, fh: 24, frames: 1, fps: 1, scale: 1.0, rotate: false }, // Witness r6
+  anglerfish:  { src: '', fw: 32, fh: 32, frames: 1, fps: 1, scale: 2.2, rotate: true  }, // Lanternjaw r18 (faces movement)
+  void_maw:    { src: '', fw: 32, fh: 32, frames: 1, fps: 1, scale: 1.9, rotate: false }, // Void Maw r15
+  leviathan:   { src: '', fw: 40, fh: 40, frames: 1, fps: 1, scale: 2.4, rotate: false }, // Leviathan Mote r24 (boss)
 };
 const _spriteCache = {};
 function loadSprite(id) {
   if (_spriteCache[id]) return;
   const def = SPRITES[id];
-  if (!def) return;
+  if (!def || !def.src) return; // no def, or a pending entry (no art yet) → vector fallback
   const entry = { def, img: null, ready: false };
   _spriteCache[id] = entry;
   try {

@@ -49,13 +49,31 @@ glassfin: { src: 'assets/glassfin.png', fw: 24, fh: 24, frames: 4, fps: 7, scale
   creature's footprint; `radius` in the ENEMIES def is the hitbox, art can be
   a bit larger).
 
-## Current placeholders (replace these)
-| file           | id        | size  | frames | notes                          |
-|----------------|-----------|-------|--------|--------------------------------|
-| `glassfin.png` | glassfin  | 24×24 | 4      | animated swim wiggle, cyan     |
-| `crab.png`     | crab      | 28×28 | 1      | static, orange                 |
-| `vessel.png`   | vessel    | 28×28 | 1      | player sub, nose right         |
+## Every entity is pre-wired — art is a one-line drop-in
+All enemies already carry a `sprite:` field and a `SPRITES` descriptor sized to
+their hitbox. The three below have placeholder art; the rest have `src:''`
+(pending) and render as vectors until you set `src`. **To add art:** author the
+PNG to the listed grid and set `SPRITES.<id>.src` (bump `frames`/`fps` or add
+`anims` if animated). Nothing else to touch.
 
-These are auto-generated throwaways from `node test/gen-sprites.mjs` — overwrite
-the files with real art (keep the names, or rename and update `SPRITES.src`).
+| id            | entity          | grid  | scale | rotate | status            |
+|---------------|-----------------|-------|-------|--------|-------------------|
+| `vessel`      | player sub      | 28×28 | 1.2   | yes    | placeholder       |
+| `glassfin`    | Glassfin        | 24×24 | 1.5   | yes    | placeholder (4-row anim) |
+| `crab`        | Carapace        | 28×28 | 1.5   | no     | placeholder       |
+| `small_eye`   | Witness         | 24×24 | 1.0   | no     | **pending**       |
+| `squid`       | Inkmind         | 28×28 | 1.4   | no     | **pending**       |
+| `jelly`       | Drift Bell      | 28×28 | 1.7   | no     | **pending**       |
+| `eye_cluster` | Witness Cluster | 28×28 | 1.7   | no     | **pending**       |
+| `wreck_drone` | Wreck Drone     | 28×28 | 1.8   | no     | **pending**       |
+| `tentacle`    | Reaching Arm    | 28×28 | 2.0   | no     | **pending**       |
+| `void_maw`    | Void Maw        | 32×32 | 1.9   | no     | **pending**       |
+| `anglerfish`  | Lanternjaw      | 32×32 | 2.2   | yes    | **pending**       |
+| `leviathan`   | Leviathan Mote  | 40×40 | 2.4   | no     | **pending** (boss)|
+
+`scale` is `on-screen px = grid · scale`, pre-set to ≈4×hitbox-radius to match
+the current vector footprint — tune to taste. `rotate:true` ⇒ draw nose-right.
+
+The placeholders are auto-generated throwaways from `node test/gen-sprites.mjs`
+— overwrite the files with real art (keep the names, or rename + update `src`).
 Visual check after adding art: `node test/shoot.mjs` → `test/shots/08-sprites.png`.
