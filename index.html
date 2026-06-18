@@ -2824,6 +2824,7 @@ function render() {
   }
 
   // background — depth-adaptive color, fades from ocean blue to abyss black
+  const { idx } = currentZone();
   const [bgCR, bgCG, bgCB] = lerpDepth(DEPTH_BG_C, G.t).map(Math.round);
   const [bgER, bgEG, bgEB] = lerpDepth(DEPTH_BG_E, G.t).map(Math.round);
   const darkness = lerpDepth(DEPTH_DARK, G.t)[0];
