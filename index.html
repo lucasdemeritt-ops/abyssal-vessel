@@ -380,7 +380,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.13</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.14</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -477,7 +477,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v3.13'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v3.14'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -4114,7 +4114,7 @@ function loop(now) {
         // This decouples "what you face" (depth) from "how many you face" (power),
         // so harder enemies arriving doesn't also mean more enemies arriving.
         const playerPower = G.player.weapons.reduce((s, w) => s + w.lvl, 0);
-        const powerScale = Math.min(2.2, 0.5 + playerPower * 0.10); // 0.5 at start → ~2.2 at max upgrades
+        const powerScale = Math.min(2.2, 1.0 + playerPower * 0.10); // 1.0 at start → ~2.2 at max upgrades
         const timeNudge  = Math.min(1.4, 1 + G.t / 900);            // very slow background escalation
         const spawnMult  = G.t < 20 ? 0.35 : powerScale * timeNudge;
         G.spawnT += dt * z.spawnRate * spawnMult;
