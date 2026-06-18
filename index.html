@@ -1832,7 +1832,7 @@ const G = {
   chestT: 0,
   zoneIdx: 0,
   enemiesKilled: 0,
-  best: 0,
+  best: parseInt(localStorage.getItem('av_best') || '0'),
 };
 
 // Best score is kept in memory only — browser storage APIs are unsupported
@@ -3781,6 +3781,7 @@ function gameOver() {
   const depth = Math.floor(G.t * 12);
   if (depth > G.best) {
     G.best = depth;
+    localStorage.setItem('av_best', G.best);
   }
   document.getElementById('go-depth').textContent = depth + 'M';
   const mins = Math.floor(G.t / 60);
