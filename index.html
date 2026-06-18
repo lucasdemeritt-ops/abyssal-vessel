@@ -380,7 +380,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.4</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.5</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -477,7 +477,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v3.4'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v3.5'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -2834,18 +2834,24 @@ function render() {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // surface light shafts — sunlight piercing from above, fade out by twilight zone
-  const shaftA = Math.max(0, 0.10 - darkness * 0.11);
-  if (shaftA > 0.004) {
+  // Water caustics — refracted sunlight rippling across shallow depths, fades by twilight zone
+  const causticA = Math.max(0, 0.20 - darkness * 0.22);
+  if (causticA > 0.003) {
     ctx.save();
-    for (let i = 0; i < 6; i++) {
-      const shx = ((Math.sin(G.t * 0.055 + i * 2.3) * 0.5 + 0.5)) * W;
-      const shw = 22 + (i % 3) * 18;
-      const shGrad = ctx.createLinearGradient(shx, 0, shx, H * 0.72);
-      shGrad.addColorStop(0, `rgba(140,220,255,${shaftA})`);
-      shGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = shGrad;
-      ctx.fillRect(shx - shw / 2, 0, shw, H * 0.72);
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 18; i++) {
+      const spd = 0.07 + (i % 5) * 0.020;
+      const cx = ((Math.sin(G.t * spd + i * 1.618) * 0.44 + 0.5)) * W;
+      const cy = ((Math.cos(G.t * spd * 0.73 + i * 2.094) * 0.44 + 0.5)) * H;
+      const r = 28 + Math.sin(G.t * 0.55 + i * 1.1) * 14;
+      const bright = (0.35 + Math.abs(Math.sin(G.t * 0.9 + i * 2.5)) * 0.45) * causticA;
+      if (bright < 0.004) continue;
+      const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      cg.addColorStop(0, `rgba(100,200,255,${Math.min(1, bright * 2.5)})`);
+      cg.addColorStop(0.6, `rgba(50,140,220,${bright})`);
+      cg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = cg;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
   }
@@ -3297,6 +3303,14 @@ function render() {
   const [dr, dg, db] = lerpDepth(DEPTH_TINT, G.t).map(Math.round);
   lightCtx.fillStyle = `rgba(${dr},${dg},${db},${darkness})`;
   lightCtx.fillRect(0, 0, W, H);
+  // Radial depth fog — edges always darker, light sources can punch through it
+  const fogEdge = Math.min(1, 0.12 + darkness * 0.70);
+  const fogGrad = lightCtx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.68);
+  fogGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  fogGrad.addColorStop(0.38, 'rgba(0,0,0,0)');
+  fogGrad.addColorStop(1, `rgba(0,0,0,${fogEdge})`);
+  lightCtx.fillStyle = fogGrad;
+  lightCtx.fillRect(0, 0, W, H);
   lightCtx.globalCompositeOperation = 'destination-out';
 
   // Player flashlight — gets deeper and narrower in later zones
@@ -3406,7 +3420,7 @@ function render() {
   // Vignette — subtle depth crush at the very edges
   const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(1, `rgba(0,0,0,${0.35 + idx * 0.08})`);
+  vg.addColorStop(1, `rgba(0,0,0,${Math.min(1, 0.18 + darkness * 0.50)})`);
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, W, H);
 
