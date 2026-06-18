@@ -3329,11 +3329,11 @@ function render() {
   // Uses a custom gradient: full clear from center to 65% of radius, soft edge beyond.
   // This means enemies within ~105px are fully visible in pitch black.
   const vehicleGlow = 162 * p.stats.light;
-  const vg = lightCtx.createRadialGradient(screenPx, screenPy, 0, screenPx, screenPy, vehicleGlow);
-  vg.addColorStop(0,    'rgba(255,255,255,1)');
-  vg.addColorStop(0.65, 'rgba(255,255,255,1)'); // flat full-clear inner zone (~105px)
-  vg.addColorStop(1,    'rgba(255,255,255,0)'); // soft falloff to dark
-  lightCtx.fillStyle = vg;
+  const shipGrad = lightCtx.createRadialGradient(screenPx, screenPy, 0, screenPx, screenPy, vehicleGlow);
+  shipGrad.addColorStop(0,    'rgba(255,255,255,1)');
+  shipGrad.addColorStop(0.65, 'rgba(255,255,255,1)'); // flat full-clear inner zone (~105px)
+  shipGrad.addColorStop(1,    'rgba(255,255,255,0)'); // soft falloff to dark
+  lightCtx.fillStyle = shipGrad;
   lightCtx.beginPath(); lightCtx.arc(screenPx, screenPy, vehicleGlow, 0, Math.PI * 2); lightCtx.fill();
 
   // Depth extension — extra range near the surface, fades to 0 by abyss
