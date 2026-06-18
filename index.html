@@ -885,23 +885,23 @@ const WEAPONS = {
 
   torpedo_array: {
     id: 'torpedo_array',
-    name: 'Torpedo Array',
+    name: 'Torpedo',
     school: 'mechanical',
     icon: '►',
-    desc: 'Forward-firing torpedoes. Honest hardware.',
+    desc: 'Forward-firing torpedo. One shot, clean kill.',
     baseCD: 1.1,
     maxLevel: 4,
     levels: [
-      { dmg: 16, count: 2, speed: 380, pierce: 1 },
-      { dmg: 20, count: 3, speed: 400, pierce: 2 },
-      { dmg: 26, count: 4, speed: 430, pierce: 2 },
-      { dmg: 34, count: 5, speed: 460, pierce: 3 },
+      { dmg: 18, count: 1, speed: 380, pierce: 1 },
+      { dmg: 22, count: 2, speed: 400, pierce: 1 },
+      { dmg: 28, count: 3, speed: 430, pierce: 2 },
+      { dmg: 36, count: 4, speed: 460, pierce: 3 },
     ],
     levelDesc: lvl => [
-      `Fires ${lvl.count} torpedo.`,
+      `Single torpedo. ${lvl.dmg} damage.`,
       `${lvl.count} torpedoes, fan spread.`,
       `${lvl.count} torpedoes, pierces ${lvl.pierce}.`,
-      `${lvl.count} torpedoes.`,
+      `Saturation barrage, ${lvl.count} torpedoes.`,
       `Saturation barrage, ${lvl.count} torpedoes.`,
     ],
     fire(w, p) {
@@ -2417,7 +2417,7 @@ function updateProjectiles(dt) {
             pushEffect({
               type: 'explosion', x: pr.x, y: pr.y,
               r: 0, maxR: 65 * (pr.explosionMult || 1),
-              life: 0.55, age: 0,
+              life: 1.4, age: 0,
               color: pr.color === '#ffe066' ? '#ffe066' : '#5be7ff',
               dmg: pr.dmg * 0.55, dmgDone: false, hit: new Set(),
             });
@@ -3165,7 +3165,8 @@ function render() {
       ctx.restore();
     } else if (fx.type === 'explosion') {
       const t2 = fx.age / fx.life;
-      const alpha = t2 < 0.3 ? (t2 / 0.3) : (1 - (t2 - 0.3) / 0.7);
+      // fast in (0→0.15), hold bright (0.15→0.65), slow fade out
+      const alpha = t2 < 0.15 ? (t2 / 0.15) : t2 < 0.65 ? 1 : (1 - (t2 - 0.65) / 0.35);
       ctx.save(); ctx.translate(fx.x, fx.y);
       // outer shockwave ring
       ctx.strokeStyle = fx.color; ctx.lineWidth = 3 * (1 - t2);
@@ -3353,8 +3354,8 @@ function render() {
   for (const fx of G.effects) {
     if (fx.type !== 'explosion') continue;
     const t2 = fx.age / fx.life;
-    const a = t2 < 0.3 ? (t2 / 0.3) : (1 - (t2 - 0.3) / 0.7);
-    addLight(wx(fx.x), wy(fx.y), Math.max(1, fx.r * 1.4), a * 0.9);
+    const a = t2 < 0.15 ? (t2 / 0.15) : t2 < 0.65 ? 1 : (1 - (t2 - 0.65) / 0.35);
+    addLight(wx(fx.x), wy(fx.y), Math.max(1, fx.r * 1.5), a * 0.92);
   }
 
   lightCtx.globalCompositeOperation = 'source-over';
