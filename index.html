@@ -380,7 +380,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.5</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.6</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -477,7 +477,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v3.5'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v3.6'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -2361,6 +2361,17 @@ function updateEnemies(dt) {
     }
   }
 
+  // Leash cull — silently remove enemies that have fallen too far behind
+  // so the enemy cap never fills with stale pursuers from old positions.
+  // Uses a generous radius so nothing visible disappears.
+  const leashR = Math.max(900, Math.hypot(W, H) * 0.78);
+  for (const e of G.enemies) {
+    if (!e.dying && Math.hypot(e.x - p.x, e.y - p.y) > leashR) {
+      e.dying = true;
+      e.leashed = true;
+    }
+  }
+
   // remove dead/dying
   G.enemies = G.enemies.filter(e => !e.dying);
 }
@@ -2788,13 +2799,13 @@ function ambientParticles(dt) {
 //  DEPTH APPEARANCE — color and darkness keyframes keyed by game time (s)
 // =========================================================================
 // [time, r, g, b]  — background gradient center color
-const DEPTH_BG_C = [[0,0,88,128],[50,0,28,55],[185,0,8,18],[430,2,1,8],[760,8,1,6]];
+const DEPTH_BG_C = [[0,0,88,128],[20,0,60,100],[50,0,28,55],[90,0,12,28],[150,0,6,14],[250,0,3,7],[430,2,1,8],[760,8,1,6]];
 // [time, r, g, b]  — background gradient edge color
-const DEPTH_BG_E = [[0,0,45,72], [50,0,12,28],[185,0,3,7], [430,0,0,1],[760,0,0,0]];
+const DEPTH_BG_E = [[0,0,45,72],[20,0,30,55],[50,0,12,28],[90,0,5,14],[150,0,2,6],[250,0,1,3],[430,0,0,1],[760,0,0,0]];
 // [time, alpha]    — darkness overlay opacity (0=fully lit, 1=pitch black)
-const DEPTH_DARK = [[0,0.15],[50,0.58],[185,0.88],[430,0.97],[760,1.00]];
+const DEPTH_DARK = [[0,0.10],[20,0.35],[50,0.60],[90,0.82],[150,0.92],[250,0.97],[430,0.99],[760,1.00]];
 // [time, r, g, b]  — tint of the darkness overlay (gives underwater scatter feel)
-const DEPTH_TINT = [[0,0,22,48],[50,0,5,15],[185,0,0,5],[430,0,0,0],[760,0,0,0]];
+const DEPTH_TINT = [[0,0,22,48],[20,0,10,28],[50,0,4,12],[90,0,1,4],[150,0,0,1],[250,0,0,0],[430,0,0,0],[760,0,0,0]];
 
 function lerpDepth(keys, t) {
   for (let i = 0; i < keys.length - 1; i++) {
@@ -3304,17 +3315,18 @@ function render() {
   lightCtx.fillStyle = `rgba(${dr},${dg},${db},${darkness})`;
   lightCtx.fillRect(0, 0, W, H);
   // Radial depth fog — edges always darker, light sources can punch through it
-  const fogEdge = Math.min(1, 0.12 + darkness * 0.70);
-  const fogGrad = lightCtx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.68);
+  const fogEdge = Math.min(1, 0.18 + darkness * 0.78);
+  const fogGrad = lightCtx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.65);
   fogGrad.addColorStop(0, 'rgba(0,0,0,0)');
-  fogGrad.addColorStop(0.38, 'rgba(0,0,0,0)');
+  fogGrad.addColorStop(0.22, 'rgba(0,0,0,0)');
+  fogGrad.addColorStop(0.60, `rgba(0,0,0,${fogEdge * 0.6})`);
   fogGrad.addColorStop(1, `rgba(0,0,0,${fogEdge})`);
   lightCtx.fillStyle = fogGrad;
   lightCtx.fillRect(0, 0, W, H);
   lightCtx.globalCompositeOperation = 'destination-out';
 
-  // Player flashlight — gets deeper and narrower in later zones
-  const lightR = (190 - idx * 8) * p.stats.light;
+  // Player flashlight — shrinks continuously with depth
+  const lightR = Math.max(22, (148 - darkness * 128) * p.stats.light);
   addLight(screenPx, screenPy, lightR, 1);
   // soft inner core so the vessel reads clearly
   addLight(screenPx, screenPy, lightR * 0.35, 1);
