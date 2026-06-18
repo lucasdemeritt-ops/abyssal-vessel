@@ -380,7 +380,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.15</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.16</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -477,7 +477,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v3.15'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v3.16'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -4113,15 +4113,19 @@ function loop(now) {
         //   Axis 2 — Enemy COUNT: player weapon power drives how many spawn
         // This decouples "what you face" (depth) from "how many you face" (power),
         // so harder enemies arriving doesn't also mean more enemies arriving.
-        const playerPower = G.player.weapons.reduce((s, w) => s + w.lvl, 0);
-        const powerScale = Math.min(2.2, 0.7 + playerPower * 0.10); // 0.7 at start → ~2.2 at max upgrades
-        const timeNudge  = Math.min(1.4, 1 + G.t / 900);            // very slow background escalation
-        const spawnMult  = G.t < 30 ? 0.35 : powerScale * timeNudge;
+        // powerScale driven by DEEPEST single weapon level, not total count.
+        // 5 weapons at lvl 1 != 1 weapon at lvl 5. Tense = mastered a weapon.
+        const maxLvl     = G.player.weapons.reduce((m, w) => Math.max(m, w.lvl), 1);
+        const powerScale = Math.min(2.3, 0.75 + (maxLvl - 1) * 0.45);
+        // powerScale: lvl1=0.75 (trickle), lvl2=1.20, lvl3=1.65, lvl4=2.10 (earned intensity)
+        const timeNudge  = Math.min(1.3, 1 + G.t / 1200); // barely grows — mastery is the driver
+        const spawnMult  = G.t < 8 ? 0.50 : powerScale * timeNudge;
         G.spawnT += dt * z.spawnRate * spawnMult;
         while (G.spawnT > 1) {
           G.spawnT -= 1;
-          // burst also scales with player power, not time
-          const burst = Math.min(5, 1 + Math.floor(playerPower / 8));
+          // burst grows with total weapon investment (breadth), separate from density
+          const totalLvls = G.player.weapons.reduce((s, w) => s + w.lvl, 0);
+          const burst = Math.min(4, 1 + Math.floor(totalLvls / 10));
           for (let i = 0; i < burst; i++) {
             if (G.enemies.length >= CAPS.enemies) break;
             spawnEnemy();
