@@ -551,6 +551,11 @@ const ctx = (function(c) {
 })(rawCtx);
 
 let W = 0, H = 0, DPR = 1;
+
+// Offscreen canvas for the darkness/light overlay
+const lightCanvas = document.createElement('canvas');
+const lightCtx = lightCanvas.getContext('2d');
+
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   W = window.innerWidth;
@@ -560,6 +565,8 @@ function resize() {
   canvas.style.width = W + 'px';
   canvas.style.height = H + 'px';
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  lightCanvas.width = W;
+  lightCanvas.height = H;
 }
 window.addEventListener('resize', resize);
 resize();
@@ -3182,23 +3189,107 @@ function render() {
 
   ctx.restore();
 
-  // === FLASHLIGHT / DARKNESS OVERLAY ===
-  // Render darkness with a radial hole at player
+  // === DARKNESS OVERLAY — offscreen light map ===
   const screenPx = W / 2 + sx;
   const screenPy = H / 2 + sy;
-  const lightR = 220 * p.stats.light;
-  const darkness = ctx.createRadialGradient(screenPx, screenPy, 0, screenPx, screenPy, lightR);
-  const ambient = 0.5 + idx * 0.08;
-  darkness.addColorStop(0, 'rgba(0,0,0,0)');
-  darkness.addColorStop(0.6, `rgba(0,0,0,${0.15 * ambient})`);
-  darkness.addColorStop(1, `rgba(0,0,0,${Math.min(0.92, 0.7 + idx * 0.05)})`);
-  ctx.fillStyle = darkness;
-  ctx.fillRect(0, 0, W, H);
+  // helper: world → screen
+  const wx = x => x - camx + W / 2 + sx;
+  const wy = y => y - camy + H / 2 + sy;
+  // helper: punch a radial light hole in the dark layer
+  const addLight = (lx, ly, r, alpha) => {
+    if (r <= 0 || alpha <= 0) return;
+    const g = lightCtx.createRadialGradient(lx, ly, 0, lx, ly, r);
+    g.addColorStop(0, `rgba(255,255,255,${Math.min(1, alpha)})`);
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    lightCtx.fillStyle = g;
+    lightCtx.beginPath(); lightCtx.arc(lx, ly, r, 0, Math.PI * 2); lightCtx.fill();
+  };
 
-  // vignette
-  const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.7);
+  lightCtx.clearRect(0, 0, W, H);
+  lightCtx.fillStyle = 'black';
+  lightCtx.fillRect(0, 0, W, H);
+  lightCtx.globalCompositeOperation = 'destination-out';
+
+  // Player flashlight — gets deeper and narrower in later zones
+  const lightR = (190 - idx * 8) * p.stats.light;
+  addLight(screenPx, screenPy, lightR, 1);
+  // soft inner core so the vessel reads clearly
+  addLight(screenPx, screenPy, lightR * 0.35, 1);
+
+  // XP gems — bioluminescent spheres; clusters illuminate the water
+  for (const pk of G.pickups) {
+    if (pk.type !== 'xp') continue;
+    addLight(wx(pk.x), wy(pk.y), 38, 0.65);
+  }
+
+  // Sonar pulse — expanding ring of light that fades as it travels
+  for (const fx of G.effects) {
+    if (fx.type !== 'sonar') continue;
+    const a = (1 - fx.age / fx.life) * 0.55;
+    const fsx = wx(fx.x), fsy = wy(fx.y);
+    // annular ring: punch a bigger hole then re-darken the center
+    const rOuter = fx.r + 18;
+    const rInner = Math.max(0, fx.r - 18);
+    const gRing = lightCtx.createRadialGradient(fsx, fsy, rInner, fsx, fsy, rOuter);
+    gRing.addColorStop(0, 'rgba(255,255,255,0)');
+    gRing.addColorStop(0.5, `rgba(255,255,255,${a})`);
+    gRing.addColorStop(1, 'rgba(255,255,255,0)');
+    lightCtx.fillStyle = gRing;
+    lightCtx.beginPath(); lightCtx.arc(fsx, fsy, rOuter, 0, Math.PI * 2); lightCtx.fill();
+  }
+
+  // Bioelectric arc — flash of light along the bolt
+  for (const fx of G.effects) {
+    if (fx.type !== 'arc') continue;
+    const a = (1 - fx.age / fx.life) * 0.6;
+    const mx = wx((fx.x1 + fx.x2) / 2), my = wy((fx.y1 + fx.y2) / 2);
+    addLight(mx, my, Math.hypot(fx.x2 - fx.x1, fx.y2 - fx.y1) * 0.5 + 20, a);
+  }
+
+  // Thermal vent — warm area-of-effect glow
+  for (const fx of G.effects) {
+    if (fx.type !== 'thermal') continue;
+    addLight(wx(fx.x), wy(fx.y), fx.radius * 0.7, (1 - fx.age / fx.life) * 0.4);
+  }
+
+  // Implosion — brief bright flash as it detonates
+  for (const fx of G.effects) {
+    if (fx.type !== 'implosion') continue;
+    const t2 = fx.age / fx.life;
+    if (t2 > 0.5) {
+      addLight(wx(fx.x), wy(fx.y), (t2 - 0.5) * 2 * fx.r + 30, (1 - (t2 - 0.5) * 2) * 0.7);
+    }
+  }
+
+  // Orbital ring shards — cool blue glow while they orbit
+  for (const o of G.orbiters) {
+    addLight(wx(o.x), wy(o.y), 36, 0.4);
+  }
+
+  // Drones — yellow eye light
+  for (const d of G.drones) {
+    addLight(wx(d.x), wy(d.y), 45, 0.35);
+  }
+
+  // Voidwater orbs — dim eerie glow (they're dark by nature, just a hint)
+  for (const v of G.voids) {
+    const k = 1 - Math.abs(0.5 - v.age / v.life) * 2;
+    addLight(wx(v.x), wy(v.y), v.dmgR * 0.6, 0.18 * k);
+  }
+
+  // Treasure chests — golden pulse draws you toward them
+  for (const c of G.chests) {
+    const pulse = 0.45 + Math.sin(G.t * 3) * 0.15;
+    addLight(wx(c.x), wy(c.y), 90, pulse);
+  }
+
+  lightCtx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(lightCanvas, 0, 0);
+
+  // Vignette — subtle depth crush at the very edges
+  const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(1, `rgba(0,0,0,${0.4 + idx * 0.1})`);
+  vg.addColorStop(1, `rgba(0,0,0,${0.35 + idx * 0.08})`);
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, W, H);
 
