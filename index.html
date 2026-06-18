@@ -380,7 +380,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.6</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.7</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -477,7 +477,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v3.6'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v3.7'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -2799,13 +2799,13 @@ function ambientParticles(dt) {
 //  DEPTH APPEARANCE — color and darkness keyframes keyed by game time (s)
 // =========================================================================
 // [time, r, g, b]  — background gradient center color
-const DEPTH_BG_C = [[0,0,88,128],[20,0,60,100],[50,0,28,55],[90,0,12,28],[150,0,6,14],[250,0,3,7],[430,2,1,8],[760,8,1,6]];
+const DEPTH_BG_C = [[0,0,88,128],[12,0,58,98],[30,0,28,55],[60,0,12,28],[95,0,6,14],[150,0,3,8],[280,2,1,8],[600,8,1,6]];
 // [time, r, g, b]  — background gradient edge color
-const DEPTH_BG_E = [[0,0,45,72],[20,0,30,55],[50,0,12,28],[90,0,5,14],[150,0,2,6],[250,0,1,3],[430,0,0,1],[760,0,0,0]];
+const DEPTH_BG_E = [[0,0,45,72],[12,0,30,55],[30,0,11,26],[60,0,5,13],[95,0,2,6],[150,0,1,3],[280,0,0,1],[600,0,0,0]];
 // [time, alpha]    — darkness overlay opacity (0=fully lit, 1=pitch black)
-const DEPTH_DARK = [[0,0.10],[20,0.35],[50,0.60],[90,0.82],[150,0.92],[250,0.97],[430,0.99],[760,1.00]];
+const DEPTH_DARK = [[0,0.10],[12,0.38],[30,0.64],[60,0.83],[95,0.93],[150,0.97],[280,0.99],[600,1.00]];
 // [time, r, g, b]  — tint of the darkness overlay (gives underwater scatter feel)
-const DEPTH_TINT = [[0,0,22,48],[20,0,10,28],[50,0,4,12],[90,0,1,4],[150,0,0,1],[250,0,0,0],[430,0,0,0],[760,0,0,0]];
+const DEPTH_TINT = [[0,0,22,48],[12,0,10,28],[30,0,4,12],[60,0,1,4],[95,0,0,1],[150,0,0,0],[280,0,0,0],[600,0,0,0]];
 
 function lerpDepth(keys, t) {
   for (let i = 0; i < keys.length - 1; i++) {
@@ -3325,11 +3325,14 @@ function render() {
   lightCtx.fillRect(0, 0, W, H);
   lightCtx.globalCompositeOperation = 'destination-out';
 
-  // Player flashlight — shrinks continuously with depth
-  const lightR = Math.max(22, (148 - darkness * 128) * p.stats.light);
-  addLight(screenPx, screenPy, lightR, 1);
-  // soft inner core so the vessel reads clearly
-  addLight(screenPx, screenPy, lightR * 0.35, 1);
+  // Vehicle glow — permanent halo, shows immediate surroundings regardless of depth
+  const vehicleGlow = 62 * p.stats.light;
+  addLight(screenPx, screenPy, vehicleGlow, 0.92);
+  addLight(screenPx, screenPy, vehicleGlow * 0.28, 1); // bright core
+
+  // Depth light — wider vision beam that shrinks to nothing as you descend
+  const depthLightR = Math.max(0, (138 - darkness * 136) * p.stats.light);
+  if (depthLightR > 4) addLight(screenPx, screenPy, depthLightR, 0.78);
 
   // XP gems — bioluminescent spheres; clusters illuminate the water
   for (const pk of G.pickups) {
@@ -4102,7 +4105,13 @@ function loop(now) {
         // Time ramp climbs slowly toward a high ceiling reached around 18-20 min,
         // so the screen-filling crush is a late-game event, not an early wall.
         const timeRamp = Math.min(4.2, 1 + G.t / 400);
-        G.spawnT += dt * z.spawnRate * timeRamp;
+        // Urgency multiplier: when enemies are sparse (player ran away and leash culled them),
+        // spawn rate spikes so the player can never stay in empty water for long.
+        const minEngagement = Math.min(18, 5 + Math.floor(G.t / 22));
+        const urgency = G.enemies.length < minEngagement
+          ? Math.min(5, 1 + (1 - G.enemies.length / Math.max(1, minEngagement)) * 4)
+          : 1;
+        G.spawnT += dt * z.spawnRate * timeRamp * urgency;
         while (G.spawnT > 1) {
           G.spawnT -= 1;
           // burst grows a bit sooner: 2 at ~2.5min, 3 at ~5min, building toward
