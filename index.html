@@ -380,7 +380,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.11</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.12</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -477,7 +477,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v3.11'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v3.12'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -2080,11 +2080,11 @@ function damagePlayer(dmg) {
 //  SPAWNING
 // =========================================================================
 const ZONES = [
-  { name: 'Continental Shelf', maxT: 50, pool: { small_fish: 7, crab: 3 }, spawnRate: 1.55 },
-  { name: 'Twilight Zone', maxT: 185, pool: { small_fish: 5, crab: 3, jelly: 3, squid: 1.5 }, spawnRate: 1.65 },
-  { name: 'Abyssal Ruins', maxT: 430, pool: { jelly: 4, squid: 2, wreck_drone: 3, tentacle: 2 }, spawnRate: 1.3 },
-  { name: 'Hadal Depths', maxT: 760, pool: { squid: 2, wreck_drone: 3, tentacle: 3, eye_cluster: 2, void_maw: 1.5 }, spawnRate: 1.2 },
-  { name: 'The Mouth', maxT: Infinity, pool: { tentacle: 3, eye_cluster: 3, void_maw: 2, anglerfish: 1.5, leviathan: 0.5 }, spawnRate: 1.35 },
+  { name: 'Continental Shelf', maxT: 65,  pool: { small_fish: 7, crab: 3 }, spawnRate: 0.65 },
+  { name: 'Twilight Zone',     maxT: 250, pool: { small_fish: 5, crab: 3, jelly: 3, squid: 1.5 }, spawnRate: 0.70 },
+  { name: 'Abyssal Ruins',     maxT: 510, pool: { jelly: 4, squid: 2, wreck_drone: 3, tentacle: 2 }, spawnRate: 0.75 },
+  { name: 'Hadal Depths',      maxT: 870, pool: { squid: 2, wreck_drone: 3, tentacle: 3, eye_cluster: 2, void_maw: 1.5 }, spawnRate: 0.80 },
+  { name: 'The Mouth',         maxT: Infinity, pool: { tentacle: 3, eye_cluster: 3, void_maw: 2, anglerfish: 1.5, leviathan: 0.5 }, spawnRate: 0.85 },
 ];
 
 // Enemy types that fire projectiles — capped so they can't flood the screen
@@ -4110,17 +4110,15 @@ function loop(now) {
         const { z } = currentZone();
         // Time ramp climbs slowly toward a high ceiling reached around 18-20 min,
         // so the screen-filling crush is a late-game event, not an early wall.
-        const timeRamp = Math.min(4.2, 1 + G.t / 400);
+        // timeRamp grows more slowly — screen-filling crush is a 15+ min event
+        const timeRamp = Math.min(3.5, 1 + G.t / 540);
         // Grace period: slower spawns in first 20s so new players can orient.
-        // After that: normal rate. The leash cull (in updateEnemies) handles
-        // keeping fresh enemies at the player's position without urgency spikes.
         const spawnMult = G.t < 20 ? 0.4 : 1;
         G.spawnT += dt * z.spawnRate * timeRamp * spawnMult;
         while (G.spawnT > 1) {
           G.spawnT -= 1;
-          // burst grows a bit sooner: 2 at ~2.5min, 3 at ~5min, building toward
-          // the screen-filling crush. Capped at 5 per tick.
-          const burst = Math.min(6, 1 + Math.floor(G.t / 140));
+          // burst grows slowly: 2 at ~4min, 3 at ~7min, building toward late-game crush
+          const burst = Math.min(5, 1 + Math.floor(G.t / 240));
           for (let i = 0; i < burst; i++) {
             if (G.enemies.length >= CAPS.enemies) break; // hard cap — never grow unbounded
             spawnEnemy();
