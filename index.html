@@ -380,7 +380,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.2</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.3</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -477,7 +477,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v3.2'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v3.3'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -3173,7 +3173,7 @@ function render() {
       ctx.shadowBlur = 30; ctx.shadowColor = fx.color;
       ctx.beginPath(); ctx.arc(0, 0, Math.max(0, fx.r), 0, Math.PI * 2); ctx.stroke();
       // bright core flash (early)
-      if (t2 < 0.4) {
+      if (t2 < 0.4 && fx.r > 2) {
         const coreA = (1 - t2 / 0.4);
         ctx.globalAlpha = coreA * 0.6;
         const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, fx.r * 0.5);
@@ -3181,7 +3181,7 @@ function render() {
         cg.addColorStop(0.4, fx.color);
         cg.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = cg;
-        ctx.beginPath(); ctx.arc(0, 0, Math.max(0, fx.r * 0.5), 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, fx.r * 0.5, 0, Math.PI * 2); ctx.fill();
       }
       ctx.globalAlpha = 1; ctx.restore();
     } else if (fx.type === 'thermal') {
