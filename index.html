@@ -380,7 +380,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.3</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.4</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -477,7 +477,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v3.3'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v3.4'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -2785,6 +2785,28 @@ function ambientParticles(dt) {
 }
 
 // =========================================================================
+//  DEPTH APPEARANCE — color and darkness keyframes keyed by game time (s)
+// =========================================================================
+// [time, r, g, b]  — background gradient center color
+const DEPTH_BG_C = [[0,0,88,128],[50,0,28,55],[185,0,8,18],[430,2,1,8],[760,8,1,6]];
+// [time, r, g, b]  — background gradient edge color
+const DEPTH_BG_E = [[0,0,45,72], [50,0,12,28],[185,0,3,7], [430,0,0,1],[760,0,0,0]];
+// [time, alpha]    — darkness overlay opacity (0=fully lit, 1=pitch black)
+const DEPTH_DARK = [[0,0.15],[50,0.58],[185,0.88],[430,0.97],[760,1.00]];
+// [time, r, g, b]  — tint of the darkness overlay (gives underwater scatter feel)
+const DEPTH_TINT = [[0,0,22,48],[50,0,5,15],[185,0,0,5],[430,0,0,0],[760,0,0,0]];
+
+function lerpDepth(keys, t) {
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (t <= keys[i + 1][0]) {
+      const f = (t - keys[i][0]) / (keys[i + 1][0] - keys[i][0]);
+      return keys[i].slice(1).map((v, j) => v + (keys[i + 1][j + 1] - v) * f);
+    }
+  }
+  return keys[keys.length - 1].slice(1);
+}
+
+// =========================================================================
 //  RENDER
 // =========================================================================
 function render() {
@@ -2801,22 +2823,40 @@ function render() {
     G.shake *= 0.85;
   }
 
-  // background — gradient based on depth/zone
-  const { idx } = currentZone();
+  // background — depth-adaptive color, fades from ocean blue to abyss black
+  const [bgCR, bgCG, bgCB] = lerpDepth(DEPTH_BG_C, G.t).map(Math.round);
+  const [bgER, bgEG, bgEB] = lerpDepth(DEPTH_BG_E, G.t).map(Math.round);
+  const darkness = lerpDepth(DEPTH_DARK, G.t)[0];
   const bgGrad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H));
-  const bgCenter = ['#02060f', '#02050d', '#01030a', '#020108', '#080106'][idx] || '#01030a';
-  const bgEdge = ['#000005', '#000005', '#000003', '#000002', '#000000'][idx] || '#000003';
-  bgGrad.addColorStop(0, bgCenter);
-  bgGrad.addColorStop(1, bgEdge);
+  bgGrad.addColorStop(0, `rgb(${bgCR},${bgCG},${bgCB})`);
+  bgGrad.addColorStop(1, `rgb(${bgER},${bgEG},${bgEB})`);
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // subtle particles in background (depth haze)
-  for (let i = 0; i < 25; i++) {
-    const t = G.t * 0.1 + i * 31.5;
-    const x = ((Math.sin(t * 0.7 + i) * 0.5 + 0.5) * W);
-    const y = ((Math.cos(t * 0.5 + i * 1.3) * 0.5 + 0.5) * H);
-    ctx.fillStyle = `rgba(91, 231, 255, ${0.04 + (i % 3) * 0.02})`;
+  // surface light shafts — sunlight piercing from above, fade out by twilight zone
+  const shaftA = Math.max(0, 0.10 - darkness * 0.11);
+  if (shaftA > 0.004) {
+    ctx.save();
+    for (let i = 0; i < 6; i++) {
+      const shx = ((Math.sin(G.t * 0.055 + i * 2.3) * 0.5 + 0.5)) * W;
+      const shw = 22 + (i % 3) * 18;
+      const shGrad = ctx.createLinearGradient(shx, 0, shx, H * 0.72);
+      shGrad.addColorStop(0, `rgba(140,220,255,${shaftA})`);
+      shGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = shGrad;
+      ctx.fillRect(shx - shw / 2, 0, shw, H * 0.72);
+    }
+    ctx.restore();
+  }
+
+  // depth haze particles — color and density adapt to depth
+  const [hR, hG, hB] = [Math.min(255, bgCR * 2 + 30), Math.min(255, bgCG * 2 + 40), Math.min(255, bgCB * 2 + 60)];
+  const hazeA = Math.max(0.02, 0.12 - darkness * 0.10);
+  for (let i = 0; i < 30; i++) {
+    const pt = G.t * 0.1 + i * 31.5;
+    const x = ((Math.sin(pt * 0.7 + i) * 0.5 + 0.5) * W);
+    const y = ((Math.cos(pt * 0.5 + i * 1.3) * 0.5 + 0.5) * H);
+    ctx.fillStyle = `rgba(${hR},${hG},${hB},${hazeA * (0.5 + (i % 3) * 0.25)})`;
     ctx.beginPath(); ctx.arc(x, y, 1 + (i % 3), 0, Math.PI * 2); ctx.fill();
   }
 
@@ -3253,7 +3293,8 @@ function render() {
   };
 
   lightCtx.clearRect(0, 0, W, H);
-  lightCtx.fillStyle = 'black';
+  const [dr, dg, db] = lerpDepth(DEPTH_TINT, G.t).map(Math.round);
+  lightCtx.fillStyle = `rgba(${dr},${dg},${db},${darkness})`;
   lightCtx.fillRect(0, 0, W, H);
   lightCtx.globalCompositeOperation = 'destination-out';
 
