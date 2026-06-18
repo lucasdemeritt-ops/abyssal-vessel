@@ -380,7 +380,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.9</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.10</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -477,7 +477,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v3.9'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v3.10'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -3328,7 +3328,7 @@ function render() {
   // Vehicle glow — flat clear zone so the player actually sees nearby enemies.
   // Uses a custom gradient: full clear from center to 65% of radius, soft edge beyond.
   // This means enemies within ~105px are fully visible in pitch black.
-  const vehicleGlow = 162 * p.stats.light;
+  const vehicleGlow = 200 * p.stats.light;
   const shipGrad = lightCtx.createRadialGradient(screenPx, screenPy, 0, screenPx, screenPy, vehicleGlow);
   shipGrad.addColorStop(0,    'rgba(255,255,255,1)');
   shipGrad.addColorStop(0.65, 'rgba(255,255,255,1)'); // flat full-clear inner zone (~105px)
@@ -4113,9 +4113,9 @@ function loop(now) {
         const timeRamp = Math.min(4.2, 1 + G.t / 400);
         // Urgency multiplier: when enemies are sparse (player ran away and leash culled them),
         // spawn rate spikes so the player can never stay in empty water for long.
-        const minEngagement = Math.min(18, 5 + Math.floor(G.t / 22));
+        const minEngagement = Math.min(10, 4 + Math.floor(G.t / 40));
         const urgency = G.enemies.length < minEngagement
-          ? Math.min(5, 1 + (1 - G.enemies.length / Math.max(1, minEngagement)) * 4)
+          ? Math.min(2.5, 1 + (1 - G.enemies.length / Math.max(1, minEngagement)) * 1.5)
           : 1;
         G.spawnT += dt * z.spawnRate * timeRamp * urgency;
         while (G.spawnT > 1) {
