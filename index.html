@@ -380,7 +380,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.12</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.13</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -477,7 +477,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v3.12'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v3.13'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -4108,19 +4108,22 @@ function loop(now) {
         }
 
         const { z } = currentZone();
-        // Time ramp climbs slowly toward a high ceiling reached around 18-20 min,
-        // so the screen-filling crush is a late-game event, not an early wall.
-        // timeRamp grows more slowly — screen-filling crush is a 15+ min event
-        const timeRamp = Math.min(3.5, 1 + G.t / 540);
-        // Grace period: slower spawns in first 20s so new players can orient.
-        const spawnMult = G.t < 20 ? 0.4 : 1;
-        G.spawnT += dt * z.spawnRate * timeRamp * spawnMult;
+        // TWO-AXIS SPAWN SYSTEM:
+        //   Axis 1 — Enemy TYPE:  zone/depth controls which enemies appear (pool above)
+        //   Axis 2 — Enemy COUNT: player weapon power drives how many spawn
+        // This decouples "what you face" (depth) from "how many you face" (power),
+        // so harder enemies arriving doesn't also mean more enemies arriving.
+        const playerPower = G.player.weapons.reduce((s, w) => s + w.lvl, 0);
+        const powerScale = Math.min(2.2, 0.5 + playerPower * 0.10); // 0.5 at start → ~2.2 at max upgrades
+        const timeNudge  = Math.min(1.4, 1 + G.t / 900);            // very slow background escalation
+        const spawnMult  = G.t < 20 ? 0.35 : powerScale * timeNudge;
+        G.spawnT += dt * z.spawnRate * spawnMult;
         while (G.spawnT > 1) {
           G.spawnT -= 1;
-          // burst grows slowly: 2 at ~4min, 3 at ~7min, building toward late-game crush
-          const burst = Math.min(5, 1 + Math.floor(G.t / 240));
+          // burst also scales with player power, not time
+          const burst = Math.min(5, 1 + Math.floor(playerPower / 8));
           for (let i = 0; i < burst; i++) {
-            if (G.enemies.length >= CAPS.enemies) break; // hard cap — never grow unbounded
+            if (G.enemies.length >= CAPS.enemies) break;
             spawnEnemy();
           }
         }
