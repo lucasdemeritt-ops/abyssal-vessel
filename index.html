@@ -380,7 +380,7 @@
   <div class="corners"></div>
   <div class="corners-2"></div>
   <div class="title">ABYSSAL<br>VESSEL</div>
-  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.7</div>
+  <div class="subtitle">DESCENT PROTOCOL · MK VII · v3.8</div>
   <div class="flavor">
     The trench answers when called.<br>
     Every expedition before this one is silent.<br>
@@ -477,7 +477,7 @@
 // tear down the previous instance: cancel its animation loop, clear any
 // leftover error banner, and reset shared state — then start fresh.
 (function freshStart() {
-  try { console.log('ABYSSAL VESSEL v3.7'); } catch (e) {}
+  try { console.log('ABYSSAL VESSEL v3.8'); } catch (e) {}
   // Cancel the previous instance's RAF loop, if any.
   if (window.__avRaf) {
     try { cancelAnimationFrame(window.__avRaf); } catch (e) {}
@@ -3325,14 +3325,16 @@ function render() {
   lightCtx.fillRect(0, 0, W, H);
   lightCtx.globalCompositeOperation = 'destination-out';
 
-  // Vehicle glow — permanent halo, shows immediate surroundings regardless of depth
-  const vehicleGlow = 62 * p.stats.light;
-  addLight(screenPx, screenPy, vehicleGlow, 0.92);
-  addLight(screenPx, screenPy, vehicleGlow * 0.28, 1); // bright core
+  // Vehicle glow — permanent halo around the ship, fully clears its radius
+  // even in pitch black. This is the player's minimum survival visibility.
+  const vehicleGlow = 88 * p.stats.light;
+  addLight(screenPx, screenPy, vehicleGlow, 1.0);
+  addLight(screenPx, screenPy, vehicleGlow * 0.35, 1); // bright inner core
 
-  // Depth light — wider vision beam that shrinks to nothing as you descend
-  const depthLightR = Math.max(0, (138 - darkness * 136) * p.stats.light);
-  if (depthLightR > 4) addLight(screenPx, screenPy, depthLightR, 0.78);
+  // Depth extension — extra reach near the surface, shrinks to nothing as you descend.
+  // At Zone 0 this gives ~190px total, matching the old pre-depth-system feel.
+  const depthExt = Math.max(0, (112 - darkness * 111) * p.stats.light);
+  if (depthExt > 5) addLight(screenPx, screenPy, depthExt, 0.85);
 
   // XP gems — bioluminescent spheres; clusters illuminate the water
   for (const pk of G.pickups) {
